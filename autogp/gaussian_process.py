@@ -95,8 +95,9 @@ class GaussianProcess(object):
         self.optimizer = None
         self.train_step = None
 
-    def fit(self, data, optimizer, loo_steps=10,    var_steps=10, epochs=200,
-                    batch_size=None, display_step=1, test=None, loss=None):
+    def fit(self, data, optimizer, loo_steps=10, var_steps=10, epochs=200,
+            batch_size=None, display_step=1, hyper_with_elbo=True, test=None,
+            loss=None):
         """
         Fit the Gaussian process model to the given data.
 
@@ -117,6 +118,9 @@ class GaussianProcess(object):
             then we perform batch gradient descent.
         display_step : int
             The frequency at which the objective values are printed out.
+        hyper_with_elbo: bool
+            True to optimize hyper-parameters using the elbo objective, in addition to using loo objective
+            False to optimizer only variational posterior parameters with elbo objective
         """
         num_train = data.num_examples
         if batch_size is None:
@@ -125,10 +129,14 @@ class GaussianProcess(object):
         if self.optimizer != optimizer:
             self.optimizer = optimizer
             self.loo_train_step = optimizer.minimize(
-                 self.loo_loss, var_list=[self.raw_inducing_inputs] +
-                                         self.raw_kernel_params +
-                                         self.raw_likelihood_params)
-            self.train_step = optimizer.minimize(self.nelbo)
+               self.loo_loss, var_list=[self.raw_inducing_inputs] +
+               self.raw_kernel_params + self.raw_likelihood_params)
+            if (hyper_with_elbo) is True:
+                self.train_step = optimizer.minimize(self.nelbo)
+            else:
+                self.train_step = optimizer.minimize(
+                    self.nelbo, var_list=[self.raw_means, self.raw_covars, self.raw_weights])
+
             self.session.run(tf.global_variables_initializer())
 
         iter = 0
