@@ -1,11 +1,12 @@
-from __future__ import print_function
+from __future__ import print_function, division, absolute_import
+from six.moves import range
 
 import numpy as np
 import tensorflow as tf
 
-import kernels
-import likelihoods
-import util
+from . import kernels
+from . import likelihoods
+from . import util
 
 
 class GaussianProcess(object):
@@ -57,10 +58,10 @@ class GaussianProcess(object):
         # transformed internally to maintain certain pre-conditions.
         self.raw_weights = tf.Variable(tf.zeros([self.num_components]))
         self.raw_means = tf.Variable(tf.zeros([self.num_components, self.num_latent,
-                                               self.num_inducing]))
+                                                 self.num_inducing]))
         if self.diag_post:
             self.raw_covars = tf.Variable(tf.ones([self.num_components, self.num_latent,
-                                                   self.num_inducing]))
+                                                     self.num_inducing]))
         else:
             init_vec = np.zeros([self.num_components, self.num_latent] +
                                  util.tri_vec_shape(self.num_inducing), dtype=np.float32) 
@@ -72,11 +73,11 @@ class GaussianProcess(object):
         # Define placeholder variables for training and predicting.
         self.num_train = tf.placeholder(tf.float32, shape=[], name="num_train")
         self.train_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim],
-                                           name="train_inputs")
+                                             name="train_inputs")
         self.train_outputs = tf.placeholder(tf.float32, shape=[None, None],
                                             name="train_outputs")
         self.test_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim],
-                                          name="test_inputs")
+                                            name="test_inputs")
 
         # Now build our computational graph.
         self.nelbo, self.loo_loss, self.predictions = self._build_graph(self.raw_weights,
@@ -94,8 +95,8 @@ class GaussianProcess(object):
         self.optimizer = None
         self.train_step = None
 
-    def fit(self, data, optimizer, loo_steps=10,  var_steps=10, epochs=200,
-            batch_size=None, display_step=1, test=None, loss=None):
+    def fit(self, data, optimizer, loo_steps=10,    var_steps=10, epochs=200,
+                    batch_size=None, display_step=1, test=None, loss=None):
         """
         Fit the Gaussian process model to the given data.
 
@@ -106,9 +107,9 @@ class GaussianProcess(object):
         optimizer : TensorFlow optimizer
             The optimizer to use in the fitting process.
         loo_steps : int
-            Number of steps  to update hyper-parameters using loo objective
+            Number of steps    to update hyper-parameters using loo objective
         var_steps : int
-            Number of steps to update  variational parameters using variational objective (elbo).
+            Number of steps to update    variational parameters using variational objective (elbo).
         epochs : int
             The number of epochs to optimize the model for.
         batch_size : int
@@ -124,9 +125,9 @@ class GaussianProcess(object):
         if self.optimizer != optimizer:
             self.optimizer = optimizer
             self.loo_train_step = optimizer.minimize(
-               self.loo_loss, var_list=[self.raw_inducing_inputs] +
-                                       self.raw_kernel_params +
-                                       self.raw_likelihood_params)
+                 self.loo_loss, var_list=[self.raw_inducing_inputs] +
+                                         self.raw_kernel_params +
+                                         self.raw_likelihood_params)
             self.train_step = optimizer.minimize(self.nelbo)
             self.session.run(tf.global_variables_initializer())
 
@@ -181,7 +182,7 @@ class GaussianProcess(object):
         test_inputs = np.array_split(test_inputs, num_batches)
         pred_means = util.init_list(0.0, [num_batches])
         pred_vars = util.init_list(0.0, [num_batches])
-        for i in xrange(num_batches):
+        for i in range(num_batches):
             pred_means[i], pred_vars[i] = self.session.run(
                 self.predictions, feed_dict={self.test_inputs: test_inputs[i]})
 
@@ -215,7 +216,7 @@ class GaussianProcess(object):
             # Use vec_to_tri(raw_covars) so as to only optimize over the lower triangular portion.
             # We note that we will always operate over the cholesky space internally.
             covars_list = [None] * self.num_components
-            for i in xrange(self.num_components):
+            for i in range(self.num_components):
                 mat = util.vec_to_tri(raw_covars[i, :, :])
                 diag_mat = tf.matrix_diag(tf.matrix_diag_part(mat))
                 exp_diag_mat = tf.matrix_diag(tf.exp(tf.matrix_diag_part(mat)))
@@ -227,7 +228,7 @@ class GaussianProcess(object):
 
         # Build the matrices of covariances between inducing inputs.
         kernel_mat = [self.kernels[i].kernel(inducing_inputs[i, :, :])
-                      for i in xrange(self.num_latent)]
+                        for i in range(self.num_latent)]
         kernel_chol = tf.stack([tf.cholesky(k) for k in kernel_mat], 0)
 
         # Now build the objective function.
@@ -244,7 +245,7 @@ class GaussianProcess(object):
 
         # Finally, build the prediction function.
         predictions = self._build_predict(weights, means, covars, inducing_inputs,
-                                          kernel_chol, test_inputs)
+                                            kernel_chol, test_inputs)
 
         return nelbo, loo_loss, predictions
 
@@ -252,7 +253,7 @@ class GaussianProcess(object):
                         kernel_chol, train_inputs, train_outputs):
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, train_inputs)
         loss = 0
-        for i in xrange(self.num_components):
+        for i in range(self.num_components):
             covar_input = covars[i, :, :] if self.diag_post else covars[i, :, :, :]
             latent_samples = self._build_samples(kern_prods, kern_sums,
                                                  means[i, :, :], covar_input)
@@ -261,11 +262,11 @@ class GaussianProcess(object):
         return tf.reduce_sum(tf.log(loss))
 
     def _build_predict(self, weights, means, covars, inducing_inputs,
-                       kernel_chol, test_inputs):
+                         kernel_chol, test_inputs):
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, test_inputs)
         pred_means = util.init_list(0.0, [self.num_components])
         pred_vars = util.init_list(0.0, [self.num_components])
-        for i in xrange(self.num_components):
+        for i in range(self.num_components):
             covar_input = covars[i, :, :] if self.diag_post else covars[i, :, :, :]
             sample_means, sample_vars = self._build_sample_info(kern_prods, kern_sums,
                                                                 means[i, :, :], covar_input)
@@ -284,9 +285,9 @@ class GaussianProcess(object):
     def _build_entropy(self, weights, means, covars):
         # First build half a square matrix of normals. This avoids re-computing symmetric normals.
         log_normal_probs = util.init_list(0.0, [self.num_components, self.num_components])
-        for i in xrange(self.num_components):
-            for j in xrange(i, self.num_components):
-                for k in xrange(self.num_latent):
+        for i in range(self.num_components):
+            for j in range(i, self.num_components):
+                for k in range(self.num_latent):
                     if self.diag_post:
                         normal = util.DiagNormal(means[i, k, :], covars[i, k, :] +
                                                                  covars[j, k, :])
@@ -303,9 +304,9 @@ class GaussianProcess(object):
 
         # Now compute the entropy.
         entropy = 0.0
-        for i in xrange(self.num_components):
+        for i in range(self.num_components):
             weighted_log_probs = util.init_list(0.0, [self.num_components])
-            for j in xrange(self.num_components):
+            for j in range(self.num_components):
                 if i <= j:
                     weighted_log_probs[j] = tf.log(weights[j]) + log_normal_probs[i][j]
                 else:
@@ -317,14 +318,14 @@ class GaussianProcess(object):
 
     def _build_cross_ent(self, weights, means, covars, kernel_chol):
         cross_ent = 0.0
-        for i in xrange(self.num_components):
+        for i in range(self.num_components):
             sum_val = 0.0
-            for j in xrange(self.num_latent):
+            for j in range(self.num_latent):
                 if self.diag_post:
                     # TODO(karl): this is a bit inefficient since we're not making use of the fact
                     # that covars is diagonal. A solution most likely involves a custom tf op.
                     trace = tf.trace(tf.cholesky_solve(kernel_chol[j, :, :],
-                                                       tf.diag(covars[i, j, :])))
+                                                         tf.diag(covars[i, j, :])))
                 else:
                     trace = tf.reduce_sum(util.diag_mul(
                         tf.cholesky_solve(kernel_chol[j, :, :], covars[i, j, :, :]),
@@ -338,10 +339,10 @@ class GaussianProcess(object):
         return cross_ent
 
     def _build_ell(self, weights, means, covars, inducing_inputs,
-                   kernel_chol, train_inputs, train_outputs):
+                     kernel_chol, train_inputs, train_outputs):
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, train_inputs)
         ell = 0
-        for i in xrange(self.num_components):
+        for i in range(self.num_components):
             covar_input = covars[i, :, :] if self.diag_post else covars[i, :, :, :]
             latent_samples = self._build_samples(kern_prods, kern_sums,
                                                  means[i, :, :], covar_input)
@@ -353,13 +354,13 @@ class GaussianProcess(object):
     def _build_interim_vals(self, kernel_chol, inducing_inputs, train_inputs):
         kern_prods = util.init_list(0.0, [self.num_latent])
         kern_sums = util.init_list(0.0, [self.num_latent])
-        for i in xrange(self.num_latent):
+        for i in range(self.num_latent):
             ind_train_kern = self.kernels[i].kernel(inducing_inputs[i, :, :], train_inputs)
             # Compute A = Kxz.Kzz^(-1) = (Kzz^(-1).Kzx)^T.
             kern_prods[i] = tf.transpose(tf.cholesky_solve(kernel_chol[i, :, :], ind_train_kern))
             # We only need the diagonal components.
             kern_sums[i] = (self.kernels[i].diag_kernel(train_inputs) -
-                            util.diag_mul(kern_prods[i], ind_train_kern))
+                                            util.diag_mul(kern_prods[i], ind_train_kern))
 
         kern_prods = tf.stack(kern_prods, 0)
         kern_sums = tf.stack(kern_sums, 0)
@@ -374,14 +375,14 @@ class GaussianProcess(object):
     def _build_sample_info(self, kern_prods, kern_sums, means, covars):
         sample_means = util.init_list(0.0, [self.num_latent])
         sample_vars = util.init_list(0.0, [self.num_latent])
-        for i in xrange(self.num_latent):
+        for i in range(self.num_latent):
             if self.diag_post:
                 quad_form = util.diag_mul(kern_prods[i, :, :] * covars[i, :],
-                                          tf.transpose(kern_prods[i, :, :]))
+                                            tf.transpose(kern_prods[i, :, :]))
             else:
                 full_covar = tf.matmul(covars[i, :, :], tf.transpose(covars[i, :, :]))
                 quad_form = util.diag_mul(tf.matmul(kern_prods[i, :, :], full_covar),
-                                          tf.transpose(kern_prods[i, :, :]))
+                                            tf.transpose(kern_prods[i, :, :]))
             sample_means[i] = tf.matmul(kern_prods[i, :, :], tf.expand_dims(means[i, :], 1))
             sample_vars[i] = tf.expand_dims(kern_sums[i, :] + quad_form, 1)
 

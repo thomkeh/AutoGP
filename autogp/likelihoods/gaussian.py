@@ -1,7 +1,8 @@
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import tensorflow as tf
 
-import likelihood
+from . import likelihood
 
 
 class Gaussian(likelihood.Likelihood):
@@ -18,4 +19,3 @@ class Gaussian(likelihood.Likelihood):
 
     def predict(self, latent_means, latent_vars):
         return latent_means, latent_vars + self.raw_std_dev ** 2
-

@@ -18,6 +18,7 @@ A collection of hacks for tensorflow.
 Hopefully we can remove these as the library matures
 """
 
+from __future__ import absolute_import, division, print_function
 import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
@@ -28,11 +29,21 @@ def eye(N):
 
 
 def tri_vec_shape(N):
-    return [N * (N + 1) / 2]
+    return [N * (N + 1) // 2]
 
 
 _custom_op_module = tf.load_op_library(os.path.join(os.path.dirname(__file__),
                                                     'tf_ops/matpackops.so'))
+"""
+Example for what vec_to_tri does:
+
+ipdb> sess.run(vec_to_tri(tf.constant([[1., 2., 3, 4, 5, 6]])))
+array([[[1., 0., 0.],
+        [2., 3., 0.],
+        [4., 5., 6.]]], dtype=float32)
+
+Native implementation of that: https://github.com/GPflow/GPflow/pull/440
+"""
 vec_to_tri = _custom_op_module.vec_to_tri
 tri_to_vec = _custom_op_module.tri_to_vec
 

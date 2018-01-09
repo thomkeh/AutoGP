@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import, division
+
 import autogp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,5 +36,3 @@ plt.plot(xtrain, ytrain, '.', mew=2)
 plt.plot(xtest, ytest, 'o', mew=2)
 plt.plot(xtest, ypred, 'x', mew=2)
 plt.show()
-
-

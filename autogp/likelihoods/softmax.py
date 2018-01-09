@@ -1,8 +1,8 @@
-import numpy as np
+from __future__ import print_function, absolute_import, division
 import tensorflow as tf
 
 from autogp import util
-import likelihood
+from . import likelihood
 
 
 class Softmax(likelihood.Likelihood):
@@ -29,4 +29,3 @@ class Softmax(likelihood.Likelihood):
         pred_vars = tf.reduce_sum((softmax - pred_means) ** 2, 0) / (self.num_samples - 1.0)
 
         return pred_means, pred_vars
-

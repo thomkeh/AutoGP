@@ -1,8 +1,9 @@
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import tensorflow as tf
 
 from autogp import util
-import kernel
+from . import kernel
 
 
 class RadialBasis(kernel.Kernel):
@@ -42,4 +43,3 @@ class RadialBasis(kernel.Kernel):
 
     def get_params(self):
         return [self.lengthscale, self.std_dev]
-

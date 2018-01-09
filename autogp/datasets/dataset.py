@@ -1,4 +1,6 @@
+from __future__ import print_function, absolute_import, division
 import numpy as np
+
 
 class DataSet():
 
@@ -7,8 +9,8 @@ class DataSet():
         perm = np.arange(self._num_examples)
         if (shuffle):
             np.random.shuffle(perm)
-        self._X = X[perm,:]
-        self._Y = Y[perm,:]
+        self._X = X[perm, :]
+        self._Y = Y[perm, :]
         self._epochs_completed = 0
         self._index_in_epoch = 0
         self._Din = X.shape[1]
@@ -23,13 +25,13 @@ class DataSet():
             self._epochs_completed += 1
             perm = np.arange(self._num_examples)
             np.random.shuffle(perm)                  # Shuffle the data
-            self._X = self._X[perm,:]
-            self._Y = self._Y[perm,:]
+            self._X = self._X[perm, :]
+            self._Y = self._Y[perm, :]
             start = 0                               # Start next epoch
             self._index_in_epoch = batch_size
             assert batch_size <= self._num_examples
         end = self._index_in_epoch
-        return self._X[start:end,:], self._Y[start:end,:]
+        return self._X[start:end, :], self._Y[start:end, :]
 
     @property
     def num_examples(self):
@@ -54,5 +56,3 @@ class DataSet():
     @property
     def Y(self):
         return self._Y
-
-

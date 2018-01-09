@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, division
 import abc
 
 
@@ -15,4 +16,3 @@ class Kernel:
     @abc.abstractmethod
     def get_params(self):
         pass
-

@@ -1,26 +1,29 @@
+from __future__ import print_function, absolute_import, division
 import copy
+from six.moves import range
 
 import tensorflow as tf
+
 
 def init_list(init, dims):
     def empty_list(dims):
         if not dims:
             return None
         else:
-            return [copy.deepcopy(empty_list(dims[1:])) for i in xrange(dims[0])]
+            return [copy.deepcopy(empty_list(dims[1:])) for i in range(dims[0])]
 
     def fill_list(dims, l):
         if len(dims) == 1:
-            for i in xrange(dims[0]):
+            for i in range(dims[0]):
                 if callable(init):
                     l[i] = init()
                 else:
                     l[i] = init
         else:
-            for i in xrange(dims[0]):
+            for i in range(dims[0]):
                 fill_list(dims[1:], l[i])
 
-    l = empty_list(dims) 
+    l = empty_list(dims)
     fill_list(dims, l)
 
     return l
@@ -45,8 +48,10 @@ def logsumexp(vals, dim=None):
     else:
         return m + tf.log(tf.reduce_sum(tf.exp(vals - tf.expand_dims(m, dim)), dim))
 
+
 def mat_square(mat):
     return tf.matmul(mat, tf.transpose(mat))
+
 
 def get_flags():
     flags = tf.app.flags
@@ -71,4 +76,3 @@ def get_flags():
     flags.DEFINE_integer('kernel_degree', 0, 'Degree of arccosine kernel')
     flags.DEFINE_integer('kernel_depth', 1, 'Depth of arcosine kernel')
     return FLAGS
-

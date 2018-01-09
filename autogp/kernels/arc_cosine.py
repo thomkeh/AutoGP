@@ -1,8 +1,9 @@
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import tensorflow as tf
 
 from autogp import util
-import kernel
+from . import kernel
 
 
 class ArcCosine(kernel.Kernel):
@@ -41,7 +42,7 @@ class ArcCosine(kernel.Kernel):
         cos_angles = (2 * point_prod) / (tf.sqrt(1 + 2 * mag_sqr1) * tf.transpose(tf.sqrt(1 + 2 * mag_sqr2)))
 
         return (((mag_prod ** self.degree) / np.pi) *
-                                      self.angular_func(cos_angles))
+                                        self.angular_func(cos_angles))
 
     def diag_kernel(self, points):
         return (self.std_dev ** 2) * self.diag_recursive_kernel(points / self.lengthscale, self.depth) + self.white
@@ -72,4 +73,3 @@ class ArcCosine(kernel.Kernel):
 
     def get_params(self):
         return [self.std_dev, self.lengthscale]
-

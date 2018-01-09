@@ -5,7 +5,8 @@ from tensorflow.contrib.learn.python.learn.datasets import base
 from tensorflow.contrib.learn.python.learn.datasets.mnist import extract_images, extract_labels
 from tensorflow.python.framework import dtypes
 
-from dataset import DataSet
+from .dataset import DataSet
+
 
 def process_mnist(images, dtype = dtypes.float32, reshape=True):
     if reshape:
@@ -18,6 +19,7 @@ def process_mnist(images, dtype = dtypes.float32, reshape=True):
         images = np.multiply(images, 1.0 / 255.0)
 
     return images
+
 
 def get_data_info(images):
     rows, cols = images.shape
@@ -37,6 +39,7 @@ def standardize_data(images, means, stds):
         else:
             data[:,col] = (data[:,col] - means[col]) / stds[col]
     return data
+
 
 def import_mnist(validation_size=0):
     """
@@ -93,4 +96,3 @@ def import_mnist(validation_size=0):
     val = DataSet(validation_images, validation_labels)
 
     return data, test, val
-

@@ -1,7 +1,8 @@
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import tensorflow as tf
 
-import util
+from .. import util
 
 
 class Normal(object):
@@ -18,8 +19,8 @@ class CholNormal(Normal):
         dim = tf.to_float(tf.shape(self.mean)[0])
         diff = tf.expand_dims(val - self.mean, 1)
         quad_form = tf.reduce_sum(diff * tf.cholesky_solve(self.covar, diff))
-        return -0.5 * (dim * tf.log(2.0 * np.pi) + util.log_cholesky_det(self.covar) +
-                       quad_form)
+        return -0.5 * (dim * tf.log(2.0 * np.pi) +
+            util.log_cholesky_det(self.covar) + quad_form)
 
 
 class DiagNormal(Normal):
@@ -30,4 +31,3 @@ class DiagNormal(Normal):
         dim = tf.to_float(tf.shape(self.mean)[0])
         quad_form = tf.reduce_sum(self.covar * (val - self.mean) ** 2)
         return -0.5 * (dim * tf.log(2.0 * np.pi) + tf.reduce_sum(tf.log(self.covar)) + quad_form)
-
