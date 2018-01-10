@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import, division
+
 import sklearn.cluster
 import numpy as np
 import autogp
@@ -9,6 +11,7 @@ from autogp import losses
 from autogp  import util
 import os
 import subprocess
+from six.moves import range
 
 DATA_DIR = 'experiments/data/cifar-10-batches-py/'
 
@@ -21,11 +24,11 @@ def init_z(train_inputs, num_inducing):
 
 
 def get_cifar_data():
-    print "Getting cifar10 data ..."
+    print("Getting cifar10 data ...")
     os.chdir('experiments/data')
     subprocess.call(["./get_cifar10_data.sh"])
     os.chdir("../../")
-    print "done"
+    print("done")
 
 def load_cifar():
     if os.path.isdir(DATA_DIR) is False: # directory does not exist, download the data
@@ -34,7 +37,7 @@ def load_cifar():
     import cPickle
     train_X = np.empty([0, 3072], dtype=np.float32)
     train_Y = np.empty([0, 10], dtype=np.float32)
-    for i in xrange(1, 6):
+    for i in range(1, 6):
         f = open(DATA_DIR + "data_batch_" + str(i))
         d = cPickle.load(f)
         f.close()
@@ -65,8 +68,8 @@ if __name__ == '__main__':
 
     # Setup initial values for the model.
     likelihood = likelihoods.Softmax()
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=10.0, input_scaling = IS_ARD) for i in xrange(10)]
-    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in xrange(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in xrange(10)]
+    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=10.0, input_scaling = IS_ARD) for i in range(10)]
+    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in range(10)]
 
     Z = init_z(data.X, NUM_INDUCING)
     m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES)
@@ -79,5 +82,3 @@ if __name__ == '__main__':
           loss=error_rate)
     ypred = m.predict(test.X)[0]
     print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
-
-

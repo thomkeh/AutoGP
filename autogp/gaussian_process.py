@@ -58,13 +58,13 @@ class GaussianProcess(object):
         # transformed internally to maintain certain pre-conditions.
         self.raw_weights = tf.Variable(tf.zeros([self.num_components]))
         self.raw_means = tf.Variable(tf.zeros([self.num_components, self.num_latent,
-                                                 self.num_inducing]))
+                                               self.num_inducing]))
         if self.diag_post:
             self.raw_covars = tf.Variable(tf.ones([self.num_components, self.num_latent,
-                                                     self.num_inducing]))
+                                                   self.num_inducing]))
         else:
             init_vec = np.zeros([self.num_components, self.num_latent] +
-                                 util.tri_vec_shape(self.num_inducing), dtype=np.float32) 
+                                util.tri_vec_shape(self.num_inducing), dtype=np.float32) 
             self.raw_covars = tf.Variable(init_vec)
         self.raw_inducing_inputs = tf.Variable(inducing_inputs, dtype=tf.float32)
         self.raw_likelihood_params = self.likelihood.get_params()
@@ -73,11 +73,11 @@ class GaussianProcess(object):
         # Define placeholder variables for training and predicting.
         self.num_train = tf.placeholder(tf.float32, shape=[], name="num_train")
         self.train_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim],
-                                             name="train_inputs")
+                                           name="train_inputs")
         self.train_outputs = tf.placeholder(tf.float32, shape=[None, None],
                                             name="train_outputs")
         self.test_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim],
-                                            name="test_inputs")
+                                          name="test_inputs")
 
         # Now build our computational graph.
         self.nelbo, self.loo_loss, self.predictions = self._build_graph(self.raw_weights,
@@ -262,7 +262,7 @@ class GaussianProcess(object):
         return tf.reduce_sum(tf.log(loss))
 
     def _build_predict(self, weights, means, covars, inducing_inputs,
-                         kernel_chol, test_inputs):
+                       kernel_chol, test_inputs):
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, test_inputs)
         pred_means = util.init_list(0.0, [self.num_components])
         pred_vars = util.init_list(0.0, [self.num_components])
@@ -339,7 +339,7 @@ class GaussianProcess(object):
         return cross_ent
 
     def _build_ell(self, weights, means, covars, inducing_inputs,
-                     kernel_chol, train_inputs, train_outputs):
+                   kernel_chol, train_inputs, train_outputs):
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, train_inputs)
         ell = 0
         for i in range(self.num_components):
@@ -378,15 +378,14 @@ class GaussianProcess(object):
         for i in range(self.num_latent):
             if self.diag_post:
                 quad_form = util.diag_mul(kern_prods[i, :, :] * covars[i, :],
-                                            tf.transpose(kern_prods[i, :, :]))
+                                          tf.transpose(kern_prods[i, :, :]))
             else:
                 full_covar = tf.matmul(covars[i, :, :], tf.transpose(covars[i, :, :]))
                 quad_form = util.diag_mul(tf.matmul(kern_prods[i, :, :], full_covar),
-                                            tf.transpose(kern_prods[i, :, :]))
+                                          tf.transpose(kern_prods[i, :, :]))
             sample_means[i] = tf.matmul(kern_prods[i, :, :], tf.expand_dims(means[i, :], 1))
             sample_vars[i] = tf.expand_dims(kern_sums[i, :] + quad_form, 1)
 
-        sample_means = tf.concat( sample_means,1)
-        sample_vars = tf.concat(sample_vars,1)
+        sample_means = tf.concat(sample_means, 1)
+        sample_vars = tf.concat(sample_vars, 1)
         return sample_means, sample_vars
-

@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import, division
+
 import autogp
 from autogp import datasets
 from autogp import kernels
@@ -11,11 +13,12 @@ import pandas as pd
 import sklearn.cluster
 import sklearn.preprocessing
 import tensorflow as tf
-import zipfile
+from six.moves import range
 
 DATA_DIR = "experiments/data/"
 TRAIN_PATH = DATA_DIR + "rectangles_im_train.amat"
 TEST_PATH = DATA_DIR + "rectangles_im_test.amat"
+
 
 def init_z(train_inputs, num_inducing):
     # Initialize inducing points using clustering.
@@ -24,12 +27,13 @@ def init_z(train_inputs, num_inducing):
     inducing_locations = mini_batch.cluster_centers_
     return inducing_locations
 
+
 def get_rectangles_images_data():
-    print "Getting rectangles images data ..."
+    print("Getting rectangles images data ...")
     os.chdir('experiments/data')
     subprocess.call(["./get_rectangles_images_data.sh"])
     os.chdir("../../")
-    print "done"
+    print("done")
 
 
 # Gettign the data
@@ -41,7 +45,7 @@ BATCH_SIZE = FLAGS.batch_size
 LEARNING_RATE = FLAGS.learning_rate
 DISPLAY_STEP = FLAGS.display_step
 EPOCHS = FLAGS.n_epochs
-NUM_SAMPLES =  FLAGS.mc_train
+NUM_SAMPLES = FLAGS.mc_train
 NUM_INDUCING = FLAGS.n_inducing
 IS_ARD = FLAGS.is_ard
 LENGTHSCALE = FLAGS.lengthscale
@@ -67,9 +71,9 @@ Z = init_z(data.X, NUM_INDUCING)
 likelihood = likelihoods.Logistic()  # Setup initial values for the model.
 
 if KERNEL == 'arccosine':
-    kern = [kernels.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH, lengthscale=LENGTHSCALE, std_dev=1.0, input_scaling=IS_ARD) for i in xrange(1)]
+    kern = [kernels.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH, lengthscale=LENGTHSCALE, std_dev=1.0, input_scaling=IS_ARD) for i in range(1)]
 else:
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=LENGTHSCALE, input_scaling=IS_ARD) for i in xrange(1)]
+    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=LENGTHSCALE, input_scaling=IS_ARD) for i in range(1)]
 
 print("Using Kernel " + KERNEL)
 

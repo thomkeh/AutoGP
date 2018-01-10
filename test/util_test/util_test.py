@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, division
 import unittest
 
 import numpy as np
@@ -24,4 +25,3 @@ class TestInitList(unittest.TestCase):
                           [[[3.25], [3.25]],
                            [[3.25], [3.25]],
                            [[3.25], [3.25]]])
-
