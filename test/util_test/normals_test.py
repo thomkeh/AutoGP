@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, division
 import unittest
 
 import numpy as np
@@ -34,4 +35,3 @@ class TestCholNormal(unittest.TestCase):
     def test_multi_covar_same_mean(self):
         log_prob = self.chol_normal_log_prob([1.0, 2.0], [1.0, 2.0], [[1.0, 0.0], [2.0, 3.0]])
         self.assertAlmostEqual(log_prob, -0.5 * (2.0 * np.log(2 * np.pi) + np.log(9.0)), SIG_FIGS)
-

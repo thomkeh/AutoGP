@@ -1,9 +1,9 @@
+from __future__ import print_function, absolute_import, division
 import unittest
 
 import numpy as np
 import tensorflow as tf
 
-from autogp import util
 from autogp import likelihoods
 
 
@@ -54,4 +54,3 @@ class TestSoftmax(unittest.TestCase):
                                 np.exp(14.0) / (np.exp(13.0) + np.exp(14.0) + np.exp(15.0)),
                                 np.exp(18.0) / (np.exp(16.0) + np.exp(17.0) + np.exp(18.0))]])
         np.testing.assert_almost_equal(np.exp(log_prob), true_probs, SIG_FIGS)
-

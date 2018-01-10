@@ -1,9 +1,9 @@
+from __future__ import print_function, absolute_import, division
 import unittest
 
 import numpy as np
 import tensorflow as tf
 
-from autogp import util
 from autogp import kernels
 
 
@@ -38,4 +38,3 @@ class TestArcCosine(unittest.TestCase):
         np.testing.assert_almost_equal(kern, [[1.0, 0.0, 1.0],
                                               [0.0, 1.0, 0.0],
                                               [1.0, 0.0, 1.0]])
-

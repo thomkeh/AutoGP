@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import, division
+
 import sklearn.cluster
 import numpy as np
 import autogp
@@ -6,13 +8,14 @@ from autogp import kernels
 import tensorflow as tf
 from autogp import datasets
 from autogp import losses
-from autogp  import util
+from autogp import util
 import subprocess
 from tensorflow.contrib.learn.python.learn.datasets import base
 from tensorflow.contrib.learn.python.learn.datasets.mnist import extract_labels
 from tensorflow.python.framework import dtypes
 import gzip
 import os
+from six.moves import range
 
 
 DATA_DIR = "experiments/data/infimnist/"
@@ -21,9 +24,11 @@ TRAIN_OUTPUTS = DATA_DIR + "train-labels.gz"
 TEST_INPUTS = DATA_DIR + "test-patterns.gz"
 TEST_OUTPUTS = DATA_DIR + "test-labels.gz"
 
+
 def _read32(bytestream):
   dt = np.dtype(np.uint32).newbyteorder('>')
   return np.frombuffer(bytestream.read(4), dtype=dt)[0]
+
 
 def extract_images(f):
   """Extract the images into a 4D uint8 numpy array [index, y, x, depth].
@@ -51,6 +56,7 @@ def extract_images(f):
     data = np.frombuffer(buf, dtype=np.uint8)
     data = data.reshape(num_images, rows, cols, 1)
     return data
+
 
 def process_mnist(images, dtype = dtypes.float32, reshape=True):
     if reshape:
@@ -115,8 +121,8 @@ if __name__ == '__main__':
 
     # Setup initial values for the model.
     likelihood = likelihoods.Softmax()
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=10.0, input_scaling = IS_ARD) for i in xrange(10)]
-    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in xrange(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in xrange(10)]
+    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=10.0, input_scaling = IS_ARD) for i in range(10)]
+    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in range(10)]
 
     Z = init_z(data.X, NUM_INDUCING)
     m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES)
@@ -130,5 +136,3 @@ if __name__ == '__main__':
 
     ypred = m.predict(test.X)[0]
     print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
-
-
