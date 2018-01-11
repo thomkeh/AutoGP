@@ -57,22 +57,22 @@ def import_mnist(validation_size=0):
 
     local_file = base.maybe_download(TRAIN_IMAGES, TRAIN_DIR,
                                      SOURCE_URL + TRAIN_IMAGES)
-    with open(local_file) as f:
+    with open(local_file, 'rb') as f:
         train_images = extract_images(f)
 
     local_file = base.maybe_download(TRAIN_LABELS, TRAIN_DIR,
                                      SOURCE_URL + TRAIN_LABELS)
-    with open(local_file) as f:
+    with open(local_file, 'rb') as f:
         train_labels = extract_labels(f, one_hot=ONE_HOT)
 
     local_file = base.maybe_download(TEST_IMAGES, TRAIN_DIR,
                                      SOURCE_URL + TEST_IMAGES)
-    with open(local_file) as f:
+    with open(local_file, 'rb') as f:
         test_images = extract_images(f)
 
     local_file = base.maybe_download(TEST_LABELS, TRAIN_DIR,
                                      SOURCE_URL + TEST_LABELS)
-    with open(local_file) as f:
+    with open(local_file, 'rb') as f:
         test_labels = extract_labels(f, one_hot=ONE_HOT)
 
     validation_images = train_images[:validation_size]
