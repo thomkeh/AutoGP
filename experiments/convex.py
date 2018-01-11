@@ -11,11 +11,12 @@ import pandas as pd
 import sklearn.cluster
 import sklearn.preprocessing
 import tensorflow as tf
-import zipfile
+from six.moves import range
 
 DATA_DIR = "experiments/data/"
 TRAIN_PATH = DATA_DIR + "convex_train.amat"
 TEST_PATH = DATA_DIR + "50k/convex_test.amat"
+
 
 def init_z(train_inputs, num_inducing):
     # Initialize inducing points using clustering.
@@ -24,12 +25,14 @@ def init_z(train_inputs, num_inducing):
     inducing_locations = mini_batch.cluster_centers_
     return inducing_locations
 
+
 def get_convex_data():
-    print "Getting convex data ..."
+    print("Getting convex data ...")
     os.chdir('experiments/data')
     subprocess.call(["./get_convex_data.sh"])
     os.chdir("../../")
-    print "done"
+    print("done")
+
 
 def normalize_features(xtrain, xtest):
     mean = np.mean(xtrain, axis=0)
@@ -37,6 +40,7 @@ def normalize_features(xtrain, xtest):
     xtrain = (xtrain-mean)/std
     xtest = (xtest-mean)/std
     return xtrain, xtest
+
 
 # Gettign the data
 if os.path.exists(TRAIN_PATH) is False:  # directory does not exist, download the data
@@ -62,7 +66,7 @@ HYPER_WITH_ELBO = FLAGS.hyper_with_elbo
 OPTIMIZE_INDUCING = FLAGS.optimize_inducing
 LATENT_NOISE = FLAGS.latent_noise
 
-print FLAGS.__flags
+print(FLAGS.__flags)
 
 # Read in and scale the data.
 train_data = pd.read_csv(TRAIN_PATH, sep=r"\s+", header=None)
@@ -84,10 +88,10 @@ likelihood = likelihoods.Logistic()  # Setup initial values for the model.
 
 if KERNEL == 'arccosine':
     kern = [kernels.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH, lengthscale=LENGTHSCALE, std_dev=1.0,
-                              input_scaling=IS_ARD, white=LATENT_NOISE) for i in xrange(1)]
+                              input_scaling=IS_ARD, white=LATENT_NOISE) for i in range(1)]
 else:
     kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=LENGTHSCALE, input_scaling=IS_ARD,
-                                white=LATENT_NOISE) for i in xrange(1)]
+                                white=LATENT_NOISE) for i in range(1)]
 
 
 m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES, num_components=NUM_COMPONENTS)
@@ -98,6 +102,3 @@ m.fit(data, o, loo_steps=LOOCV_STEPS, var_steps=VAR_STEPS, epochs=EPOCHS, batch_
 
 ypred = m.predict(test.X)[0]
 print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
-
-
-
