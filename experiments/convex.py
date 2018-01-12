@@ -28,7 +28,7 @@ def init_z(train_inputs, num_inducing):
 def get_convex_data():
     print("Getting convex data ...")
     os.chdir('experiments/data')
-    subprocess.call(["./get_convex_data.sh"])
+    subprocess.call(["../scripts/get_convex_data.sh"])
     os.chdir("../../")
     print("done")
 

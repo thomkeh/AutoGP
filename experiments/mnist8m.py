@@ -71,7 +71,7 @@ def process_mnist(images, dtype=dtypes.float32, reshape=True):
 def get_mnist8m_data():
     print("Getting mnist8m data ...")
     os.chdir('experiments/data')
-    subprocess.call(["./get_mnist8m_data.sh"])
+    subprocess.call(["../scripts/get_mnist8m_data.sh"])
     os.chdir("../../")
     print("done")
 
