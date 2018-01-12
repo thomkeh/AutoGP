@@ -1,9 +1,6 @@
-from __future__ import print_function, absolute_import, division
-import numpy as np
 import tensorflow as tf
 
 from . import likelihood
-from autogp import util
 
 
 class RegressionNetwork(likelihood.Likelihood):

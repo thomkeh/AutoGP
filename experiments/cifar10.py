@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import, division
-
 import sklearn.cluster
 import numpy as np
 import autogp
@@ -8,12 +6,12 @@ from autogp import kernels
 import tensorflow as tf
 from autogp import datasets
 from autogp import losses
-from autogp  import util
+from autogp import util
 import os
 import subprocess
-from six.moves import range
 
 DATA_DIR = 'experiments/data/cifar-10-batches-py/'
+
 
 def init_z(train_inputs, num_inducing):
     # Initialize inducing points using clustering.
@@ -30,8 +28,9 @@ def get_cifar_data():
     os.chdir("../../")
     print("done")
 
+
 def load_cifar():
-    if os.path.isdir(DATA_DIR) is False: # directory does not exist, download the data
+    if os.path.isdir(DATA_DIR) is False:  # directory does not exist, download the data
         get_cifar_data()
 
     import cPickle

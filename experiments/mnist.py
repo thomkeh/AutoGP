@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, division
 import sklearn.cluster
 import autogp
 from autogp import likelihoods
@@ -7,7 +6,6 @@ import tensorflow as tf
 from autogp import datasets
 from autogp import losses
 from autogp import util
-from six.moves import range
 
 
 def init_z(train_inputs, num_inducing):
@@ -24,7 +22,7 @@ if __name__ == '__main__':
     LEARNING_RATE = FLAGS.learning_rate
     DISPLAY_STEP = FLAGS.display_step
     EPOCHS = FLAGS.n_epochs
-    NUM_SAMPLES =    FLAGS.mc_train
+    NUM_SAMPLES = FLAGS.mc_train
     NUM_INDUCING = FLAGS.n_inducing
     IS_ARD = FLAGS.is_ard
 
@@ -33,7 +31,7 @@ if __name__ == '__main__':
     # Setup initial values for the model.
     likelihood = likelihoods.Softmax()
     kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=10.0, input_scaling=IS_ARD) for i in range(10)]
-    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in xrange(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in xrange(10)]
+    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in xrange(10)]
 
     Z = init_z(data.X, NUM_INDUCING)
     m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES)
@@ -52,4 +50,4 @@ if __name__ == '__main__':
     print(time.time() - otime)
 
     ypred = m.predict(test.X)[0]
-    print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
+    print(f"Final {error_rate.get_name()}={error_rate.eval(test.Y, ypred):.4}")

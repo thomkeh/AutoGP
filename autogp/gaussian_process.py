@@ -1,6 +1,3 @@
-from __future__ import print_function, division, absolute_import
-from six.moves import range
-
 import numpy as np
 import tensorflow as tf
 
@@ -9,7 +6,7 @@ from . import likelihoods
 from . import util
 
 
-class GaussianProcess(object):
+class GaussianProcess:
     """
     The class representing the AutoGP model.
 
@@ -208,12 +205,12 @@ class GaussianProcess(object):
             loo = self.session.run(self.loo_loss, feed_dict={self.train_inputs: data.X,
                                                              self.train_outputs: data.Y,
                                                              self.num_train: num_train})
-            print("iter=" + repr(iter) + " [epoch=" + repr(data.epochs_completed)  +  "] nelbo=" + repr(nelbo), end=" ")
-            print("loo=" + repr(loo))
+            print(f"iter={iter!r} [epoch={data.epochs_completed!r}] nelbo={nelbo!r}", end=" ")
+            print(f"loo={loo!r}")
 
         if loss is not None:
             ypred = self.predict(test.X)[0]
-            print("iter=" + repr(iter) + " [epoch=" +  repr(data.epochs_completed)  + "] current " + loss.get_name() + "=" + "%.4f" % loss.eval(test.Y, ypred))
+            print(f"iter={iter!r} [epoch={data.epochs_completed!r}] current {loss.get_name()}={loss.eval(test.Y, ypred):.4}")
 
     def _build_graph(self, raw_weights, raw_means, raw_covars, raw_inducing_inputs,
                      train_inputs, train_outputs, num_train, test_inputs):
@@ -392,10 +389,10 @@ class GaussianProcess(object):
                 quad_form = util.diag_mul(kern_prods[i, :, :] * covars[i, :],
                                           tf.transpose(kern_prods[i, :, :]))
             else:
-                full_covar = tf.matmul(covars[i, :, :], tf.transpose(covars[i, :, :]))
-                quad_form = util.diag_mul(tf.matmul(kern_prods[i, :, :], full_covar),
+                full_covar = covars[i, :, :] @ tf.transpose(covars[i, :, :])
+                quad_form = util.diag_mul(kern_prods[i, :, :] @ full_covar,
                                           tf.transpose(kern_prods[i, :, :]))
-            sample_means[i] = tf.matmul(kern_prods[i, :, :], tf.expand_dims(means[i, :], 1))
+            sample_means[i] = kern_prods[i, :, :] @ tf.expand_dims(means[i, :], 1)
             sample_vars[i] = tf.expand_dims(kern_sums[i, :] + quad_form, 1)
 
         sample_means = tf.concat(sample_means, 1)

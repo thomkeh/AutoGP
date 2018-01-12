@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, division
 import numpy as np
 import tensorflow as tf
 
@@ -21,7 +20,7 @@ class ArcCosine(kernel.Kernel):
     def kernel(self, points1, points2=None):
         if points2 is None:
             points2 = points1
-            white_noise = self.white * util.eye(tf.shape(points1)[0])
+            white_noise = self.white * tf.eye(tf.shape(points1)[0])
         else:
             white_noise = 0.0
 
@@ -32,7 +31,7 @@ class ArcCosine(kernel.Kernel):
         if depth == 1:
             mag_sqr1 = tf.expand_dims(tf.reduce_sum(points1 ** 2, 1), 1)
             mag_sqr2 = tf.expand_dims(tf.reduce_sum(points2 ** 2, 1), 1)
-            point_prod = tf.matmul(points1, tf.transpose(points2))
+            point_prod = points1 @ tf.transpose(points2)
         else:
             mag_sqr1 = tf.expand_dims(self.diag_recursive_kernel(points1, depth - 1), 1)
             mag_sqr2 = tf.expand_dims(self.diag_recursive_kernel(points2, depth - 1), 1)

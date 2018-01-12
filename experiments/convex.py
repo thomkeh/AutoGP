@@ -11,7 +11,6 @@ import pandas as pd
 import sklearn.cluster
 import sklearn.preprocessing
 import tensorflow as tf
-from six.moves import range
 
 DATA_DIR = "experiments/data/"
 TRAIN_PATH = DATA_DIR + "convex_train.amat"

@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import, division
-
 import sklearn.cluster
 import numpy as np
 import autogp
@@ -15,7 +13,6 @@ from tensorflow.contrib.learn.python.learn.datasets.mnist import extract_labels
 from tensorflow.python.framework import dtypes
 import gzip
 import os
-from six.moves import range
 
 
 DATA_DIR = "experiments/data/infimnist/"
@@ -58,7 +55,7 @@ def extract_images(f):
     return data
 
 
-def process_mnist(images, dtype = dtypes.float32, reshape=True):
+def process_mnist(images, dtype=dtypes.float32, reshape=True):
     if reshape:
         assert images.shape[3] == 1
         images = images.reshape(images.shape[0],
@@ -72,14 +69,15 @@ def process_mnist(images, dtype = dtypes.float32, reshape=True):
 
 
 def get_mnist8m_data():
-    print "Getting mnist8m data ..."
+    print("Getting mnist8m data ...")
     os.chdir('experiments/data')
     subprocess.call(["./get_mnist8m_data.sh"])
     os.chdir("../../")
-    print "done"
+    print("done")
+
 
 def import_mnist():
-    if os.path.isdir(DATA_DIR) is False: # directory does not exist, download the data
+    if os.path.isdir(DATA_DIR) is False:  # directory does not exist, download the data
         get_mnist8m_data()
 
     with open(TRAIN_INPUTS) as f:
@@ -113,7 +111,7 @@ if __name__ == '__main__':
     LEARNING_RATE = FLAGS.learning_rate
     DISPLAY_STEP = FLAGS.display_step
     EPOCHS = FLAGS.n_epochs
-    NUM_SAMPLES =  FLAGS.mc_train
+    NUM_SAMPLES = FLAGS.mc_train
     NUM_INDUCING = FLAGS.n_inducing
     IS_ARD = FLAGS.is_ard
 

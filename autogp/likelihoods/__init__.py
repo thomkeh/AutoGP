@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from .likelihood import Likelihood
 from .logistic import Logistic
 from .gaussian import Gaussian
