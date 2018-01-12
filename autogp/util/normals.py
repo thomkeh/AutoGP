@@ -4,7 +4,7 @@ import tensorflow as tf
 from .. import util
 
 
-class Normal(object):
+class Normal:
     def __init__(self, mean, covar):
         self.mean = mean
         self.covar = covar

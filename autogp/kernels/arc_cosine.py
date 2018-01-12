@@ -31,7 +31,7 @@ class ArcCosine(kernel.Kernel):
         if depth == 1:
             mag_sqr1 = tf.expand_dims(tf.reduce_sum(points1 ** 2, 1), 1)
             mag_sqr2 = tf.expand_dims(tf.reduce_sum(points2 ** 2, 1), 1)
-            point_prod = tf.matmul(points1, tf.transpose(points2))
+            point_prod = points1 @ tf.transpose(points2)
         else:
             mag_sqr1 = tf.expand_dims(self.diag_recursive_kernel(points1, depth - 1), 1)
             mag_sqr2 = tf.expand_dims(self.diag_recursive_kernel(points2, depth - 1), 1)

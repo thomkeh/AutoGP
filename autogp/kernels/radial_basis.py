@@ -30,7 +30,7 @@ class RadialBasis(kernel.Kernel):
         points2 = points2 / self.lengthscale
         magnitude_square1 = tf.expand_dims(tf.reduce_sum(points1 ** 2, 1), 1)
         magnitude_square2 = tf.expand_dims(tf.reduce_sum(points2 ** 2, 1), 1)
-        distances = (magnitude_square1 - 2 * tf.matmul(points1, tf.transpose(points2)) +
+        distances = (magnitude_square1 - 2 * points1 @ tf.transpose(points2) +
                      tf.transpose(magnitude_square2))
         distances = tf.clip_by_value(distances, 0.0, self.MAX_DIST);
 

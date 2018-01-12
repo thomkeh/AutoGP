@@ -147,8 +147,8 @@ class TestSimpleFull(TestGaussianProcess):
                                              [np.exp(-4.5), np.exp(-2.0), np.exp(-0.5)]],
                                             dtype=np.float32)
 
-        real_kern_prods = np.dot(train_inducing_distances, np.linalg.inv(inducing_distances))
-        real_kern_sums = np.ones([2]) - np.diag(np.dot(real_kern_prods, train_inducing_distances.T))
+        real_kern_prods = train_inducing_distances @ np.linalg.inv(inducing_distances)
+        real_kern_sums = np.ones([2]) - np.diag(real_kern_prods @ train_inducing_distances.T)
 
         np.testing.assert_almost_equal(kern_prods[0], real_kern_prods, SIG_FIGS)
         np.testing.assert_almost_equal(kern_sums[0], real_kern_sums, SIG_FIGS)
@@ -365,12 +365,12 @@ class TestMultiFull(TestGaussianProcess):
                                               [2.0, 13.0]]))
         kzz_inv2 = scipy.linalg.inv(np.array([[16.0, 20.0],
                                               [20.0, 61.0]]))
-        a_1 = np.dot(kxz_1, kzz_inv1)
-        a_2 = np.dot(kxz_2, kzz_inv2)
+        a_1 = kxz_1 @ kzz_inv1
+        a_2 = kxz_2 @ kzz_inv2
         np.testing.assert_almost_equal(kern_prods[0], a_1, SIG_FIGS)
         np.testing.assert_almost_equal(kern_prods[1], a_2, SIG_FIGS)
-        np.testing.assert_almost_equal(kern_sums[0], np.diag(kxx - np.dot(a_1, kxz_1.T)), SIG_FIGS)
-        np.testing.assert_almost_equal(kern_sums[1], np.diag(kxx - np.dot(a_2, kxz_2.T)), SIG_FIGS)
+        np.testing.assert_almost_equal(kern_sums[0], np.diag(kxx - a_1 @ kxz_1.T), SIG_FIGS)
+        np.testing.assert_almost_equal(kern_sums[1], np.diag(kxx - a_2 @ kxz_2.T), SIG_FIGS)
 
     def test_sample_info(self):
         mean, var = TestMultiFull.sample_info(kern_prods=[[[1.0, 2.0],

@@ -389,10 +389,10 @@ class GaussianProcess:
                 quad_form = util.diag_mul(kern_prods[i, :, :] * covars[i, :],
                                           tf.transpose(kern_prods[i, :, :]))
             else:
-                full_covar = tf.matmul(covars[i, :, :], tf.transpose(covars[i, :, :]))
-                quad_form = util.diag_mul(tf.matmul(kern_prods[i, :, :], full_covar),
+                full_covar = covars[i, :, :] @ tf.transpose(covars[i, :, :])
+                quad_form = util.diag_mul(kern_prods[i, :, :] @ full_covar,
                                           tf.transpose(kern_prods[i, :, :]))
-            sample_means[i] = tf.matmul(kern_prods[i, :, :], tf.expand_dims(means[i, :], 1))
+            sample_means[i] = kern_prods[i, :, :] @ tf.expand_dims(means[i, :], 1)
             sample_vars[i] = tf.expand_dims(kern_sums[i, :] + quad_form, 1)
 
         sample_means = tf.concat(sample_means, 1)
