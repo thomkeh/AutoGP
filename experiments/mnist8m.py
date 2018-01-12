@@ -80,18 +80,18 @@ def import_mnist():
     if os.path.isdir(DATA_DIR) is False:  # directory does not exist, download the data
         get_mnist8m_data()
 
-    with open(TRAIN_INPUTS) as f:
+    with open(TRAIN_INPUTS, 'rb') as f:
         train_images = extract_images(f)
         train_images = process_mnist(train_images)
 
-    with open(TRAIN_OUTPUTS) as f:
+    with open(TRAIN_OUTPUTS, 'rb') as f:
         train_labels = extract_labels(f, one_hot=True)
 
-    with open(TEST_INPUTS) as f:
+    with open(TEST_INPUTS, 'rb') as f:
         test_images = extract_images(f)
         test_images = process_mnist(test_images)
 
-    with open(TEST_OUTPUTS) as f:
+    with open(TEST_OUTPUTS, 'rb') as f:
         test_labels = extract_labels(f, one_hot=True)
 
     return datasets.DataSet(train_images, train_labels), datasets.DataSet(test_images, test_labels)

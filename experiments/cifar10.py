@@ -33,18 +33,16 @@ def load_cifar():
     if os.path.isdir(DATA_DIR) is False:  # directory does not exist, download the data
         get_cifar_data()
 
-    import cPickle
+    import pickle
     train_X = np.empty([0, 3072], dtype=np.float32)
     train_Y = np.empty([0, 10], dtype=np.float32)
     for i in range(1, 6):
-        f = open(DATA_DIR + "data_batch_" + str(i))
-        d = cPickle.load(f)
-        f.close()
+        with open(DATA_DIR + f"data_batch_{i!s}", 'rb') as f:
+            d = pickle.load(f, encoding='latin1')
         train_X = np.concatenate([train_X, d["data"]])
         train_Y = np.concatenate([train_Y, np.eye(10)[d["labels"]]])
-    f = open(DATA_DIR + "test_batch")
-    d = cPickle.load(f)
-    f.close()
+    with open(DATA_DIR + "test_batch", 'rb') as f:
+        d = pickle.load(f, encoding='latin1')
     train_X = train_X / 255.0
     test_X = np.array(d["data"], dtype=np.float32) / 255.0
     test_Y = np.array(np.eye(10)[d["labels"]], dtype=np.float32)
