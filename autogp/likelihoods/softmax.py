@@ -21,7 +21,8 @@ class Softmax(likelihood.Likelihood):
         latent = (latent_means + tf.sqrt(latent_vars) *
                   tf.random_normal([self.num_samples, num_points, output_dims]))
         # Compute the softmax of all generated latent values in a stable fashion.
-        softmax = tf.exp(latent - tf.expand_dims(util.logsumexp(latent, 2), 2))
+        # softmax = tf.exp(latent - tf.expand_dims(util.logsumexp(latent, 2), 2))
+        softmax = tf.nn.softmax(latent, dim=2)
 
         # Estimate the expected value of the softmax and the variance through sampling.
         pred_means = tf.reduce_mean(softmax, 0)

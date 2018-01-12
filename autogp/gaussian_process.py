@@ -285,7 +285,8 @@ class GaussianProcess:
         pred_vars = tf.stack(pred_vars, 0)
 
         # Compute the mean and variance of the gaussian mixture from their components.
-        weights = tf.expand_dims(tf.expand_dims(weights, 1), 1)
+        # weights = tf.expand_dims(tf.expand_dims(weights, 1), 1)
+        weights = weights[:, tf.newaxis, tf.newaxis]
         weighted_means = tf.reduce_sum(weights * pred_means, 0)
         weighted_vars = (tf.reduce_sum(weights * (pred_means ** 2 + pred_vars), 0) -
                          tf.reduce_sum(weights * pred_means, 0) ** 2)
@@ -369,7 +370,7 @@ class GaussianProcess:
             kern_prods[i] = tf.transpose(tf.cholesky_solve(kernel_chol[i, :, :], ind_train_kern))
             # We only need the diagonal components.
             kern_sums[i] = (self.kernels[i].diag_kernel(train_inputs) -
-                                            util.diag_mul(kern_prods[i], ind_train_kern))
+                            util.diag_mul(kern_prods[i], ind_train_kern))
 
         kern_prods = tf.stack(kern_prods, 0)
         kern_sums = tf.stack(kern_sums, 0)
@@ -392,8 +393,8 @@ class GaussianProcess:
                 full_covar = covars[i, :, :] @ tf.transpose(covars[i, :, :])
                 quad_form = util.diag_mul(kern_prods[i, :, :] @ full_covar,
                                           tf.transpose(kern_prods[i, :, :]))
-            sample_means[i] = kern_prods[i, :, :] @ tf.expand_dims(means[i, :], 1)
-            sample_vars[i] = tf.expand_dims(kern_sums[i, :] + quad_form, 1)
+            sample_means[i] = kern_prods[i, :, :] @ means[i, :, tf.newaxis]
+            sample_vars[i] = (kern_sums[i, :] + quad_form)[:, tf.newaxis]
 
         sample_means = tf.concat(sample_means, 1)
         sample_vars = tf.concat(sample_vars, 1)
