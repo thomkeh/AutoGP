@@ -69,7 +69,7 @@ class TestSimpleFull(TestGaussianProcess):
                                            num_components=1,
                                            diag_post=False,
                                            num_samples=10)
-        cls.session.run(tf.initialize_all_variables())
+        cls.session.run(tf.global_variables_initializer())
 
     def test_simple_entropy(self):
         entropy = TestSimpleFull.entropy(weights=[1.0],
@@ -131,7 +131,7 @@ class TestSimpleFull(TestGaussianProcess):
         kern_prods, kern_sums = TestSimpleFull.interim_vals(kernel_chol=[[[1e8]]],
                                                             inducing_inputs=[[[1e8]]],
                                                             train_inputs=[[1e8]])
-        self.assertAlmostEqual(kern_prods, 1e-8, SIG_FIGS)
+        self.assertAlmostEqual(kern_prods.item(), 1e-8, SIG_FIGS)
         self.assertAlmostEqual(kern_sums, 1 - 1e-8, SIG_FIGS)
 
     def test_multiple_inputs_interim_vals(self):
@@ -186,7 +186,7 @@ class TestSimpleDiag(TestGaussianProcess):
                                            num_components=1,
                                            diag_post=True,
                                            num_samples=10)
-        cls.session.run(tf.initialize_all_variables())
+        cls.session.run(tf.global_variables_initializer())
 
     def test_simple_entropy(self):
         entropy = TestSimpleDiag.entropy(weights=[1.0],
@@ -261,7 +261,7 @@ class TestMultiFull(TestGaussianProcess):
                                            num_components=2,
                                            diag_post=False,
                                            num_samples=1)
-        cls.session.run(tf.initialize_all_variables())
+        cls.session.run(tf.global_variables_initializer())
 
     def test_entropy(self):
         entropy = TestMultiFull.entropy(weights=[0.7, 0.3],

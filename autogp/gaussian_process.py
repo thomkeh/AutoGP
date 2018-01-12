@@ -205,12 +205,12 @@ class GaussianProcess:
             loo = self.session.run(self.loo_loss, feed_dict={self.train_inputs: data.X,
                                                              self.train_outputs: data.Y,
                                                              self.num_train: num_train})
-            print("iter=" + repr(iter) + " [epoch=" + repr(data.epochs_completed)  +  "] nelbo=" + repr(nelbo), end=" ")
-            print("loo=" + repr(loo))
+            print(f"iter={iter!r} [epoch={data.epochs_completed!r}] nelbo={nelbo!r}", end=" ")
+            print(f"loo={loo!r}")
 
         if loss is not None:
             ypred = self.predict(test.X)[0]
-            print("iter=" + repr(iter) + " [epoch=" +  repr(data.epochs_completed)  + "] current " + loss.get_name() + "=" + "%.4f" % loss.eval(test.Y, ypred))
+            print(f"iter={iter!r} [epoch={data.epochs_completed!r}] current {loss.get_name()}={loss.eval(test.Y, ypred):.4}")
 
     def _build_graph(self, raw_weights, raw_means, raw_covars, raw_inducing_inputs,
                      train_inputs, train_outputs, num_train, test_inputs):

@@ -50,4 +50,4 @@ if __name__ == '__main__':
     print(time.time() - otime)
 
     ypred = m.predict(test.X)[0]
-    print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
+    print(f"Final {error_rate.get_name()}={error_rate.eval(test.Y, ypred):.4}")
