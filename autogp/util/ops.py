@@ -14,17 +14,11 @@
 
 
 """
-A collection of hacks for tensorflow.
-Hopefully we can remove these as the library matures
+A collection of functions for tensorflow.
 """
 
-from __future__ import absolute_import, division, print_function
 import tensorflow as tf
 import numpy as np
-
-
-def eye(N):
-    return tf.diag(tf.ones(tf.stack([N, ]), dtype='float32'))
 
 
 def tri_vec_shape(N):

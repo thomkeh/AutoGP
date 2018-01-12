@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import, division
-
 import autogp
 from autogp import datasets
 from autogp import kernels
@@ -13,7 +11,6 @@ import pandas as pd
 import sklearn.cluster
 import sklearn.preprocessing
 import tensorflow as tf
-from six.moves import range
 
 DATA_DIR = "experiments/data/"
 TRAIN_PATH = DATA_DIR + "rectangles_im_train.amat"
@@ -71,7 +68,9 @@ Z = init_z(data.X, NUM_INDUCING)
 likelihood = likelihoods.Logistic()  # Setup initial values for the model.
 
 if KERNEL == 'arccosine':
-    kern = [kernels.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH, lengthscale=LENGTHSCALE, std_dev=1.0, input_scaling=IS_ARD) for i in range(1)]
+    kern = [kernels.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH,
+                              lengthscale=LENGTHSCALE, std_dev=1.0, input_scaling=IS_ARD)
+            for i in range(1)]
 else:
     kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=LENGTHSCALE, input_scaling=IS_ARD) for i in range(1)]
 
@@ -85,6 +84,3 @@ m.fit(data, o, loo_steps=LOOCV_STEPS, var_steps=VAR_STEPS, epochs=EPOCHS, batch_
 
 ypred = m.predict(test.X)[0]
 print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
-
-
-

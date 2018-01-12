@@ -1,6 +1,3 @@
-from __future__ import print_function, division, absolute_import
-from six.moves import range
-
 import numpy as np
 import tensorflow as tf
 
@@ -9,7 +6,7 @@ from . import likelihoods
 from . import util
 
 
-class GaussianProcess(object):
+class GaussianProcess:
     """
     The class representing the AutoGP model.
 

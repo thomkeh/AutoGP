@@ -1,8 +1,5 @@
-from __future__ import print_function, absolute_import, division
-import numpy as np
 import tensorflow as tf
 
-from autogp import util
 from . import likelihood
 
 
@@ -29,4 +26,3 @@ class Logistic(likelihood.Likelihood):
         pred_vars = tf.reduce_sum((logistic - pred_means) ** 2, 0) / (self.num_samples - 1.0)
 
         return pred_means, pred_vars
-

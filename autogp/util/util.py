@@ -1,6 +1,4 @@
-from __future__ import print_function, absolute_import, division
 import copy
-from six.moves import range
 
 import tensorflow as tf
 
@@ -50,7 +48,7 @@ def logsumexp(vals, dim=None):
 
 
 def mat_square(mat):
-    return tf.matmul(mat, tf.transpose(mat))
+    return mat @ tf.transpose(mat)
 
 
 def get_flags():

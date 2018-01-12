@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, division
 import numpy as np
 import tensorflow as tf
 
@@ -20,7 +19,7 @@ class CholNormal(Normal):
         diff = tf.expand_dims(val - self.mean, 1)
         quad_form = tf.reduce_sum(diff * tf.cholesky_solve(self.covar, diff))
         return -0.5 * (dim * tf.log(2.0 * np.pi) +
-            util.log_cholesky_det(self.covar) + quad_form)
+                       util.log_cholesky_det(self.covar) + quad_form)
 
 
 class DiagNormal(Normal):

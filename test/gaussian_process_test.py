@@ -1,11 +1,9 @@
-from __future__ import print_function, absolute_import, division
 import unittest
 
 import numpy as np
 import scipy.misc
 import scipy.stats
 import tensorflow as tf
-from six.moves import range
 
 import autogp
 from autogp import kernels

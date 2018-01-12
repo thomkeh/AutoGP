@@ -7,15 +7,14 @@ from autogp import likelihoods
 from autogp import kernels
 import tensorflow as tf
 from autogp import datasets
-from autogp import losses
-from autogp  import util
-import pandas
+from autogp import util
 import scipy.io as sio
 
 
 DATA_DIR = "experiments/data/"
 TRAIN_PATH = DATA_DIR + "sarcos_inv.mat"
 TEST_PATH = DATA_DIR + "sarcos_inv_test"
+
 
 def init_z(train_inputs, num_inducing):
     # Initialize inducing points using clustering.
@@ -26,11 +25,11 @@ def init_z(train_inputs, num_inducing):
 
 
 def get_sarcos_data():
-    print "Getting sarcos data ..."
+    print("Getting sarcos data ...")
     os.chdir('experiments/data')
     subprocess.call(["./get_sarcos_data.sh"])
     os.chdir("../../")
-    print "done"
+    print("done")
 
 
 def sarcos_all_joints_data():
@@ -74,22 +73,21 @@ if __name__ == '__main__':
 
     # Setup initial values for the model.
     likelihood = likelihoods.RegressionNetwork(7, 0.1)
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=8.0, input_scaling = IS_ARD) for i in xrange(8)]
-    # kern = [kernels.ArcCosine(data.X.shape[1], 1, 3, 5.0, 1.0, input_scaling=True) for i in xrange(10)]
+    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=8.0, input_scaling = IS_ARD) for i in range(8)]
+    # kern = [kernels.ArcCosine(data.X.shape[1], 1, 3, 5.0, 1.0, input_scaling=True) for i in range(10)]
 
     Z = init_z(data.X, NUM_INDUCING)
     m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES)
 
     # setting up loss to be reported during training
-    error_rate = None #losses.StandardizedMeanSqError(d['train_outputs'].astype(np.float32), data.Dout)
+    error_rate = None  # losses.StandardizedMeanSqError(d['train_outputs'].astype(np.float32), data.Dout)
 
     import time
     o = tf.train.RMSPropOptimizer(LEARNING_RATE)
     start = time.time()
     m.fit(data, o, loo_steps=0, var_steps=50, epochs = EPOCHS, batch_size = BATCH_SIZE, display_step=DISPLAY_STEP, test = test,
             loss = error_rate )
-    print time.time() - start
+    print(time.time() - start)
 
     ypred = m.predict(test.X)[0]
     print("Final " + error_rate.get_name() + "=" + "%.4f" % error_rate.eval(test.Y, ypred))
-
