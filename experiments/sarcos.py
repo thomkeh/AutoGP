@@ -27,7 +27,7 @@ def init_z(train_inputs, num_inducing):
 def get_sarcos_data():
     print("Getting sarcos data ...")
     os.chdir('experiments/data')
-    subprocess.call(["./get_sarcos_data.sh"])
+    subprocess.call(["../scripts/get_sarcos_data.sh"])
     os.chdir("../../")
     print("done")
 

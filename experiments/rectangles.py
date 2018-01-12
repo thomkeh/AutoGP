@@ -28,7 +28,7 @@ def init_z(train_inputs, num_inducing):
 def get_rectangles_images_data():
     print("Getting rectangles images data ...")
     os.chdir('experiments/data')
-    subprocess.call(["./get_rectangles_images_data.sh"])
+    subprocess.call(["../scripts/get_rectangles_images_data.sh"])
     os.chdir("../../")
     print("done")
 

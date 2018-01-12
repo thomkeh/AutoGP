@@ -24,7 +24,7 @@ def init_z(train_inputs, num_inducing):
 def get_cifar_data():
     print("Getting cifar10 data ...")
     os.chdir('experiments/data')
-    subprocess.call(["./get_cifar10_data.sh"])
+    subprocess.call(["../scripts/get_cifar10_data.sh"])
     os.chdir("../../")
     print("done")
 
