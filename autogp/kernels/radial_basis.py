@@ -28,10 +28,15 @@ class RadialBasis(kernel.Kernel):
 
         points1 = points1 / self.lengthscale
         points2 = points2 / self.lengthscale
-        magnitude_square1 = tf.reduce_sum(points1 ** 2, 1)[:, tf.newaxis]
-        magnitude_square2 = tf.reduce_sum(points2 ** 2, 1)[:, tf.newaxis]
-        distances = (magnitude_square1 - 2 * points1 @ tf.transpose(points2) +
-                     tf.transpose(magnitude_square2))
+        magnitude_square1 = tf.reduce_sum(points1**2, -1, keepdims=True)
+        magnitude_square2 = tf.reduce_sum(points2**2, -1, keepdims=True)
+        # import ipdb; ipdb.set_trace()
+        if len(points1.shape) == 3:
+            perm = [0, 2, 1]
+        else:
+            perm = [1, 0]
+        distances = (magnitude_square1 - 2 * points1 @ tf.transpose(points2, perm) +
+                     tf.transpose(magnitude_square2, perm))
         distances = tf.clip_by_value(distances, 0.0, self.MAX_DIST);
 
         kern = ((self.std_dev ** 2) * tf.exp(-distances / 2.0))
