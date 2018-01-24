@@ -326,6 +326,31 @@ class GaussianProcess:
 
         return entropy
 
+    def _build_cross_ent2(self, weights, means, covars, kernel_chol):
+        """Construct the cross-entropy.
+
+        Input shapes:
+        weights: (num_components)
+        means: (num_components, num_latent, num_inducing)
+        covars: (num_components, num_latent, num_inducing[, num_inducing])
+        kernel_chol: (num_latent, num_inducing, num_inducing)
+        """
+        if self.diag_post:
+            # TODO(karl): this is a bit inefficient since we're not making use of the fact
+            # that covars is diagonal. A solution most likely involves a custom tf op.
+            trace = tf.trace(tf.cholesky_solve(kernel_chol, tf.matrix_diag(covars)))  # sh(num_components, num_latent)
+        else:
+            trace = tf.reduce_sum(util.diag_mul2(tf.cholesky_solve(kernel_chol, covars), tf.matrix_transpose(covars)),
+                                  axis=-1)
+
+        # sum_val has the same shape as weights
+        sum_val = tf.reduce_sum(util.CholNormal2(means, kernel_chol).log_prob(0.0) - 0.5 * trace, -1)
+
+        # dot product of weights and sum_val
+        cross_ent = tf.tensordot(weights, sum_val, 1)
+
+        return cross_ent
+
     def _build_cross_ent(self, weights, means, covars, kernel_chol):
         cross_ent = 0.0
         for i in range(self.num_components):
@@ -348,39 +373,61 @@ class GaussianProcess:
 
         return cross_ent
 
-    def _build_ell(self, weights, means, covars, inducing_inputs,
-                   kernel_chol, train_inputs, train_outputs):
+    def _build_ell(self, weights, means, covars, inducing_inputs, kernel_chol, train_inputs, train_outputs):
+        """Construct the Expected Log Likelihood
+        input shapes:
+        weights: (num_components,)
+        inducing_inputs: (num_latent, num_inducing, input_dim)
+        kernel_chol: (num_latent, num_inducing, num_inducing)
+        train_inputs: (num_train, input_dim)
+        """
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, train_inputs)
-        ell = 0
-        for i in range(self.num_components):
-            covar_input = covars[i, :, :] if self.diag_post else covars[i, :, :, :]
-            latent_samples = self._build_samples(kern_prods, kern_sums,
-                                                 means[i, :, :], covar_input)
-            ell += weights[i] * tf.reduce_sum(self.likelihood.log_cond_prob(train_outputs,
-                                                                            latent_samples))
+        latent_samples = self._build_samples2(kern_prods, kern_sums, means, covars)
+        # import ipdb; ipdb.set_trace()
+        ell = tf.reduce_sum(weights * tf.reduce_sum(self.likelihood.log_cond_prob(train_outputs, latent_samples)),
+                            axis=0)
 
         return ell / self.num_samples
 
     def _build_interim_vals(self, kernel_chol, inducing_inputs, train_inputs):
-        kern_prods = util.init_list(0.0, [self.num_latent])
-        kern_sums = util.init_list(0.0, [self.num_latent])
-        for i in range(self.num_latent):
-            ind_train_kern = self.kernels[i].kernel(inducing_inputs[i, :, :], train_inputs)
-            # Compute A = Kxz.Kzz^(-1) = (Kzz^(-1).Kzx)^T.
-            kern_prods[i] = tf.transpose(tf.cholesky_solve(kernel_chol[i, :, :], ind_train_kern))
-            # We only need the diagonal components.
-            kern_sums[i] = (self.kernels[i].diag_kernel(train_inputs) -
-                            util.diag_mul(kern_prods[i], ind_train_kern))
+        ind_train_kern = self.kernels[0].kernel2(inducing_inputs, train_inputs)
+        # Compute A = Kxz.Kzz^(-1) = (Kzz^(-1).Kzx)^T.
+        kern_prods = tf.transpose(tf.cholesky_solve(kernel_chol, ind_train_kern), [0, 2, 1])
+        # We only need the diagonal components.
+        kern_sums = (self.kernels[0].diag_kernel(train_inputs) -
+                     util.diag_mul2(kern_prods, ind_train_kern))
 
-        kern_prods = tf.stack(kern_prods, 0)
-        kern_sums = tf.stack(kern_sums, 0)
         return kern_prods, kern_sums
+
+    def _build_samples2(self, kern_prods, kern_sums, means, covars):
+        """can handle 4D input"""
+        sample_means, sample_vars = self._build_sample_info2(kern_prods, kern_sums, means, covars)
+        batch_size = sample_means.shape[0].value
+        return (sample_means + tf.sqrt(sample_vars) *
+                tf.random_normal([self.num_samples, batch_size, self.num_latent]))
 
     def _build_samples(self, kern_prods, kern_sums, means, covars):
         sample_means, sample_vars = self._build_sample_info(kern_prods, kern_sums, means, covars)
         batch_size = tf.shape(sample_means)[0]
         return (sample_means + tf.sqrt(sample_vars) *
                 tf.random_normal([self.num_samples, batch_size, self.num_latent]))
+
+    def _build_sample_info2(self, kern_prods, kern_sums, means, covars):
+        """can handle 4D input
+        input shapes:
+        kern_prods: (num_latent, num_train, num_inducing)
+        kern_sums: (num_latent, num_train)
+        means: (num_components, num_latent, num_inducing)
+        covars: (num_components, num_latent, num_inducing[, num_inducing])
+        """
+        if self.diag_post:
+            quad_form = util.diag_mul2(kern_prods * covars[:, :, tf.newaxis, :], tf.transpose(kern_prods, [0, 2, 1]))
+        else:
+            full_covar = util.mat_square(covars)  # same shape as covars
+            quad_form = util.diag_mul2(util.matmul_br(kern_prods, full_covar), tf.matrix_transpose(kern_prods))
+        sample_means = util.matmul_br(kern_prods, means[..., tf.newaxis])
+        sample_vars = (kern_sums + quad_form)[..., tf.newaxis]
+        return sample_means, sample_vars
 
     def _build_sample_info(self, kern_prods, kern_sums, means, covars):
         sample_means = util.init_list(0.0, [self.num_latent])

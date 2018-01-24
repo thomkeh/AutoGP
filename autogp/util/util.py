@@ -27,12 +27,68 @@ def init_list(init, dims):
     return l
 
 
+def matmul_br(a, b, transpose_a=False, transpose_b=False):
+    """Broadcasting matmul.
+
+    The shape of a must be a subset of b in the sense that for example b has shape (j, k, l, m) and a has shape
+    (k, n, l) or (n, l) (or (j, k, n, l) but then you can use the regular matmul).
+
+    Not all combinations are supported right now.
+    """
+    a_sh = a.shape.as_list()
+    b_sh = b.shape.as_list()
+    if len(b_sh) == 2 and len(a_sh) >= 2:
+        # this is by far the easiest case and the only one where things are relatively computationally efficient
+        # first we merge all dimensions except the last
+        a_merged = tf.reshape(a, [-1, a_sh[-1]])
+        # then we do the multiplication
+        product = tf.matmul(a_merged, b, transpose_a=transpose_a, transpose_b=transpose_b)
+        # finally we separate the dimensions again
+        return tf.reshape(product, a_sh[0:-1] + [-1])
+
+    if len(b_sh) == 3 and len(a.shape) == 2:
+        perm_move_to_end = [1, 2, 0]
+        shape_merged = [-1, b_sh[2] * b_sh[0]]
+        shape_separated = [-1, b_sh[2], b_sh[0]]
+        perm_move_to_front = [2, 0, 1]
+    elif len(b_sh) == 4 and len(a.shape) == 2:
+        perm_move_to_end = [2, 3, 0, 1]
+        shape_merged = [-1, b_sh[3] * b_sh[0] * b_sh[1]]
+        shape_separated = [-1, b_sh[3], b_sh[0], b_sh[1]]
+        perm_move_to_front = [2, 3, 0, 1]
+    elif len(b_sh) == 4 and len(a.shape) == 3:
+        perm_move_to_end = [1, 2, 3, 0]
+        shape_merged = [b_sh[1], -1, b_sh[3] * b_sh[0]]
+        shape_separated = [b_sh[1], -1, b_sh[3], b_sh[0]]
+        perm_move_to_front = [3, 0, 1, 2]
+    else:
+        raise ValueError("Combination of ranks not supported")
+    # move the first dimension to the end and then merge it with the last dimension
+    b_merged = tf.reshape(tf.transpose(b, perm_move_to_end), shape_merged)
+    # do multiplication
+    product = tf.matmul(a, b_merged, transpose_a=transpose_a, transpose_b=transpose_b)
+    # separate out the last dimension into what it was before the merging, then move the dimension from the back to the
+    # front again
+    return tf.transpose(tf.reshape(product, shape_separated), perm_move_to_front)
+
+
 def ceil_divide(dividend, divisor):
     return (dividend + divisor - 1) / divisor
 
 
+def log_cholesky_det2(chol):
+    return 2 * tf.reduce_sum(tf.log(tf.matrix_diag_part(chol)), axis=-1)
+
+
 def log_cholesky_det(chol):
     return 2 * tf.reduce_sum(tf.log(tf.diag_part(chol)))
+
+
+def diag_mul2(mat1, mat2):
+    """
+    """
+    # TODO(thomas): this seems wrong but nowhere it says what the function is supposed to do!!! so I don't know
+    return tf.reduce_sum(mat1 * tf.matrix_transpose(mat2), -1)
 
 
 def diag_mul(mat1, mat2):
@@ -48,7 +104,7 @@ def logsumexp(vals, dim=None):
 
 
 def mat_square(mat):
-    return mat @ tf.transpose(mat)
+    return tf.matmul(mat, mat, transpose_b=True)
 
 
 def get_flags():

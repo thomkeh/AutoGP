@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 from autogp import util
@@ -19,6 +18,33 @@ class RadialBasis(kernel.Kernel):
         self.input_dim = input_dim
         self.white = white
 
+    def kernel2(self, points1, points2=None):
+        assert len(points1.shape) == 3
+        points1 = points1 / self.lengthscale
+        magnitude_square1 = tf.reduce_sum(points1**2, -1, keepdims=True)
+        p1_shape = points1.shape
+        if points2 is None:
+            points2 = points1
+            white_noise = self.white * tf.eye(points1.shape[-2].value)
+            product = tf.matmul(points1, points2, transpose_b=True)
+            magnitude_square2_t = tf.matrix_transpose(magnitude_square1)
+        else:
+            # if len(points2.shape) == 2 and len(points1.shape) == 3:
+            #     points2 = points2[tf.newaxis, :, :]
+            assert len(points2.shape) == 2
+            points2 = points2 / self.lengthscale
+            white_noise = 0.0
+            product = util.matmul_br(points1, points2, transpose_b=True)
+            magnitude_square2_t = tf.matrix_transpose(tf.reduce_sum(points2**2, -1, keepdims=True))
+            # import ipdb; ipdb.set_trace()
+
+        distances = magnitude_square1 - 2 * product + magnitude_square2_t
+        # TODO(thomas): this seems wrong. why would we not want the covariance to go to zero no matter how far apart?
+        distances = tf.clip_by_value(distances, 0.0, self.MAX_DIST)
+
+        kern = ((self.std_dev ** 2) * tf.exp(-distances / 2.0))
+        return kern + white_noise
+
     def kernel(self, points1, points2=None):
         if points2 is None:
             points2 = points1
@@ -28,22 +54,17 @@ class RadialBasis(kernel.Kernel):
 
         points1 = points1 / self.lengthscale
         points2 = points2 / self.lengthscale
-        magnitude_square1 = tf.reduce_sum(points1**2, -1, keepdims=True)
-        magnitude_square2 = tf.reduce_sum(points2**2, -1, keepdims=True)
-        # import ipdb; ipdb.set_trace()
-        if len(points1.shape) == 3:
-            perm = [0, 2, 1]
-        else:
-            perm = [1, 0]
-        distances = (magnitude_square1 - 2 * points1 @ tf.transpose(points2, perm) +
-                     tf.transpose(magnitude_square2, perm))
+        magnitude_square1 = tf.reduce_sum(points1 ** 2, 1)[:, tf.newaxis]
+        magnitude_square2 = tf.reduce_sum(points2 ** 2, 1)[:, tf.newaxis]
+        distances = (magnitude_square1 - 2 * points1 @ tf.transpose(points2) +
+                     tf.transpose(magnitude_square2))
         distances = tf.clip_by_value(distances, 0.0, self.MAX_DIST);
 
         kern = ((self.std_dev ** 2) * tf.exp(-distances / 2.0))
         return kern + white_noise
 
     def diag_kernel(self, points):
-        return ((self.std_dev ** 2) + self.white) * tf.ones([tf.shape(points)[0]])
+        return ((self.std_dev ** 2) + self.white) * tf.ones([tf.shape(points)[-2]])
 
     def get_params(self):
         return [self.lengthscale, self.std_dev]
