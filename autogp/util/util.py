@@ -1,50 +1,25 @@
-import copy
-
 import tensorflow as tf
 
 
-def init_list(init, dims):
-    def empty_list(dims):
-        if not dims:
-            return None
-        else:
-            return [copy.deepcopy(empty_list(dims[1:])) for i in range(dims[0])]
-
-    def fill_list(dims, l):
-        if len(dims) == 1:
-            for i in range(dims[0]):
-                if callable(init):
-                    l[i] = init()
-                else:
-                    l[i] = init
-        else:
-            for i in range(dims[0]):
-                fill_list(dims[1:], l[i])
-
-    l = empty_list(dims)
-    fill_list(dims, l)
-
-    return l
-
-
-def matmul_br(a, b, transpose_a=False, transpose_b=False):
-    """Broadcasting matmul.
-
-    The shape of a must be a subset of b in the sense that for example b has shape (j, k, l, m) and a has shape
-    (k, n, l) or (n, l) (or (j, k, n, l) but then you can use the regular matmul).
-
-    Not all combinations are supported right now.
+def _merge_and_separate(a, b, func):
     """
-    a_sh = a.shape.as_list()
+    Helper function to make operations broadcast when they don't support it natively.
+
+    The shape of a must be a subset of `b` in the sense that for example `b` has shape (j, k, l, m) and `a` has shape
+    (k, n, l) or (n, l) (for (j, k, n, l) you can just use the regular operation). Also supported is `b` with shape
+    (j, k, l) and `a` with shape (n, k).
+
+    Args:
+        a: Tensor
+        b: Tensor
+        func: a function that takes two arguments
+    Returns:
+        broadcasted result
+    """
     b_sh = b.shape.as_list()
-    if len(b_sh) == 2 and len(a_sh) >= 2:
-        # this is by far the easiest case and the only one where things are relatively computationally efficient
-        # first we merge all dimensions except the last
-        a_merged = tf.reshape(a, [-1, a_sh[-1]])
-        # then we do the multiplication
-        product = tf.matmul(a_merged, b, transpose_a=transpose_a, transpose_b=transpose_b)
-        # finally we separate the dimensions again
-        return tf.reshape(product, a_sh[0:-1] + [-1])
+    if len(b_sh) == len(a.shape):
+        # no need to broadcast; just apply the function
+        return func(a, b)
 
     if len(b_sh) == 3 and len(a.shape) == 2:
         perm_move_to_end = [1, 2, 0]
@@ -63,13 +38,57 @@ def matmul_br(a, b, transpose_a=False, transpose_b=False):
         perm_move_to_front = [3, 0, 1, 2]
     else:
         raise ValueError("Combination of ranks not supported")
+
     # move the first dimension to the end and then merge it with the last dimension
     b_merged = tf.reshape(tf.transpose(b, perm_move_to_end), shape_merged)
-    # do multiplication
-    product = tf.matmul(a, b_merged, transpose_a=transpose_a, transpose_b=transpose_b)
+    # apply function
+    result = func(a, b_merged)
     # separate out the last dimension into what it was before the merging, then move the dimension from the back to the
     # front again
-    return tf.transpose(tf.reshape(product, shape_separated), perm_move_to_front)
+    return tf.transpose(tf.reshape(result, shape_separated), perm_move_to_front)
+
+
+def matmul_br(a, b, transpose_a=False, transpose_b=False):
+    """Broadcasting matmul.
+
+    Not all combinations of ranks are supported right now.
+
+    Args:
+        a: Tensor
+        b: Tensor
+        transpose_a: whether or not to transpose a
+        transpose_b: whether or not to transpose b
+    Returns:
+        Broadcasted result of matrix multiplication.
+    """
+    a_sh = a.shape.as_list()
+    if len(b.shape) == 2 and len(a_sh) >= 2:
+        # this is by far the easiest case and the only one where things are relatively computationally efficient
+        # first we merge all dimensions except the last
+        a_merged = tf.reshape(a, [-1, a_sh[-1]])
+        # then we do the multiplication
+        product = tf.matmul(a_merged, b, transpose_a=transpose_a, transpose_b=transpose_b)
+        # finally we separate the dimensions again
+        return tf.reshape(product, a_sh[0:-1] + [-1])
+
+    # if b has higher rank than a, we have to use a different approach
+    def func(x, y):
+        return tf.matmul(x, y, transpose_a=transpose_a, transpose_b=transpose_b)
+    return _merge_and_separate(a, b, func)
+
+
+def cholesky_solve_br(chol, rhs):
+    """Broadcasting Cholesky solve.
+
+    This only works if `rhs` has higher rank.
+
+    Args:
+        chol: Cholesky factorization.
+        rhs: Right-hand side of equation to solve.
+    Returns:
+        Solution
+    """
+    return _merge_and_separate(chol, rhs, tf.cholesky_solve)
 
 
 def ceil_divide(dividend, divisor):
@@ -80,19 +99,11 @@ def log_cholesky_det2(chol):
     return 2 * tf.reduce_sum(tf.log(tf.matrix_diag_part(chol)), axis=-1)
 
 
-def log_cholesky_det(chol):
-    return 2 * tf.reduce_sum(tf.log(tf.diag_part(chol)))
-
-
 def diag_mul2(mat1, mat2):
     """
     """
     # TODO(thomas): this seems wrong but nowhere it says what the function is supposed to do!!! so I don't know
     return tf.reduce_sum(mat1 * tf.matrix_transpose(mat2), -1)
-
-
-def diag_mul(mat1, mat2):
-    return tf.reduce_sum(mat1 * tf.transpose(mat2), 1)
 
 
 def logsumexp(vals, dim=None):
@@ -105,6 +116,22 @@ def logsumexp(vals, dim=None):
 
 def mat_square(mat):
     return tf.matmul(mat, mat, transpose_b=True)
+
+
+def broadcast(tensor, tensor_with_target_shape):
+    """Make `tensor` have the same shape as `tensor_with_target_shape` by copying `tensor` over and over.
+
+    The rank of `tensor` has to be smaller than the rank of `tensor_with_target_shape`.
+    """
+    target_shape = tensor_with_target_shape.shape.as_list()
+    target_rank = len(target_shape)
+    input_shape = tensor.shape.as_list()
+    input_rank = len(input_shape)
+    if not all(input_shape) or not all(target_shape):
+        # TODO(thomas): do something with tensors instead of ints
+        pass
+    input_with_expanded_dims = tf.reshape(tensor, [1] * (target_rank - input_rank) + input_shape)
+    return tf.tile(input_with_expanded_dims, target_shape[0:-input_rank] + [1] * input_rank)
 
 
 def get_flags():

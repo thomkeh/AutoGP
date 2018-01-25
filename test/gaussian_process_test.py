@@ -25,33 +25,33 @@ class TestGaussianProcess(unittest.TestCase):
 
     @classmethod
     def entropy(cls, weights, means, covars):
-        entropy = cls.model._build_entropy(weights=np.array(weights, dtype=np.float32),
-                                           means=np.array(means, dtype=np.float32),
-                                           covars=np.array(covars, dtype=np.float32))
+        entropy = cls.model._build_entropy(weights=tf.constant(weights, dtype=tf.float32),
+                                           means=tf.constant(means, dtype=tf.float32),
+                                           covars=tf.constant(covars, dtype=tf.float32))
         return cls.session.run(entropy)
 
     @classmethod
     def cross_ent(cls, weights, means, covars, kernel_chol):
-        cross_ent = cls.model._build_cross_ent(weights=np.array(weights, dtype=np.float32),
-                                               means=np.array(means, dtype=np.float32),
-                                               covars=np.array(covars, dtype=np.float32),
-                                               kernel_chol=np.array(kernel_chol, dtype=np.float32))
+        cross_ent = cls.model._build_cross_ent(weights=tf.constant(weights, dtype=tf.float32),
+                                               means=tf.constant(means, dtype=tf.float32),
+                                               covars=tf.constant(covars, dtype=tf.float32),
+                                               kernel_chol=tf.constant(kernel_chol, dtype=tf.float32))
         return cls.session.run(cross_ent)
 
     @classmethod
     def interim_vals(cls, kernel_chol, inducing_inputs, train_inputs):
         kern_prods, kern_sums = cls.model._build_interim_vals(
-            kernel_chol=np.array(kernel_chol, dtype=np.float32),
-            inducing_inputs=np.array(inducing_inputs, dtype=np.float32),
-            train_inputs=np.array(train_inputs, dtype=np.float32))
+            kernel_chol=tf.constant(kernel_chol, dtype=tf.float32),
+            inducing_inputs=tf.constant(inducing_inputs, dtype=tf.float32),
+            train_inputs=tf.constant(train_inputs, dtype=tf.float32))
         return cls.session.run([kern_prods, kern_sums])
 
     @classmethod
     def sample_info(cls, kern_prods, kern_sums, means, covars):
-        mean, var = cls.model._build_sample_info(kern_prods=np.array(kern_prods, dtype=np.float32),
-                                                 kern_sums=np.array(kern_sums, dtype=np.float32),
-                                                 means=np.array(means, dtype=np.float32),
-                                                 covars=np.array(covars, dtype=np.float32))
+        mean, var = cls.model._build_sample_info(kern_prods=tf.constant(kern_prods, dtype=tf.float32),
+                                                 kern_sums=tf.constant(kern_sums, dtype=tf.float32),
+                                                 means=tf.constant(means, dtype=tf.float32),
+                                                 covars=tf.constant(covars, dtype=tf.float32))
         return cls.session.run([mean, var])
 
 

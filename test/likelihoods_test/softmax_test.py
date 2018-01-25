@@ -12,13 +12,13 @@ SIG_FIGS = 5
 class TestSoftmax(unittest.TestCase):
     def log_prob(self, outputs, latent):
         softmax = likelihoods.Softmax()
-        return tf.Session().run(softmax.log_cond_prob(np.array(outputs, dtype=np.float32),
-                                                      np.array(latent, dtype=np.float32)))
+        return tf.Session().run(softmax.log_cond_prob(tf.constant(outputs, dtype=tf.float32),
+                                                      tf.constant(latent, dtype=tf.float32)))
 
     def predict(self, latent_means, latent_vars):
         softmax = likelihoods.Softmax()
-        return tf.Session().run(softmax.predict(np.array(latent_means, dtype=np.float32),
-                                                np.array(latent_vars, dtype=np.float32)))
+        return tf.Session().run(softmax.predict(tf.constant(latent_means, dtype=tf.float32),
+                                                tf.constant(latent_vars, dtype=tf.float32)))
 
     def test_single_prob(self):
         log_prob = self.log_prob([[1.0, 0.0]], [[[5.0, 2.0]]])
