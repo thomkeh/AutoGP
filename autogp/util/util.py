@@ -95,23 +95,15 @@ def ceil_divide(dividend, divisor):
     return (dividend + divisor - 1) / divisor
 
 
-def log_cholesky_det2(chol):
+def log_cholesky_det(chol):
     return 2 * tf.reduce_sum(tf.log(tf.matrix_diag_part(chol)), axis=-1)
 
 
-def diag_mul2(mat1, mat2):
+def diag_mul(mat1, mat2):
     """
     """
     # TODO(thomas): this seems wrong but nowhere it says what the function is supposed to do!!! so I don't know
     return tf.reduce_sum(mat1 * tf.matrix_transpose(mat2), -1)
-
-
-def logsumexp(vals, dim=None):
-    m = tf.reduce_max(vals, dim)
-    if dim is None:
-        return m + tf.log(tf.reduce_sum(tf.exp(vals - m), dim))
-    else:
-        return m + tf.log(tf.reduce_sum(tf.exp(vals - tf.expand_dims(m, dim)), dim))
 
 
 def mat_square(mat):
@@ -127,11 +119,19 @@ def broadcast(tensor, tensor_with_target_shape):
     target_rank = len(target_shape)
     input_shape = tensor.shape.as_list()
     input_rank = len(input_shape)
-    if not all(input_shape) or not all(target_shape):
-        # TODO(thomas): do something with tensors instead of ints
-        pass
-    input_with_expanded_dims = tf.reshape(tensor, [1] * (target_rank - input_rank) + input_shape)
-    return tf.tile(input_with_expanded_dims, target_shape[0:-input_rank] + [1] * input_rank)
+    if all(input_shape) and all(target_shape):
+        # the shapes are all fully specified. this means we can work with integers
+        # first we will pad the shape with 1s until the rank is the same. e.g. [m, n] -> [1, 1, 1, m, n]
+        expand_dims_shape = [1] * (target_rank - input_rank) + input_shape
+        # then we set the multiples that are necessary to reach the target shape. e.g. [j, k, l, 1, 1]
+        tile_multiples = target_shape[0:-input_rank] + [1] * input_rank
+    else:
+        # the shapes are not fully specified. we have to work with tensors
+        target_shape = tf.shape(tensor_with_target_shape)
+        expand_dims_shape = tf.concat([[1] * (target_rank - input_rank), tf.shape(tensor)], axis=0)
+        tile_multiples = tf.concat([target_shape[0:-input_rank], [1] * input_rank], axis=0)
+    input_with_expanded_dims = tf.reshape(tensor, expand_dims_shape)
+    return tf.tile(input_with_expanded_dims, tile_multiples)
 
 
 def get_flags():

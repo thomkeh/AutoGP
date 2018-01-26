@@ -86,7 +86,7 @@ class GaussianProcess:
                                                                         self.num_train,
                                                                         self.test_inputs)
 
-        #config = tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
+        # config = tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
         # Do all the tensorflow bookkeeping.
         self.session = tf.Session()
         self.optimizer = None
@@ -125,8 +125,8 @@ class GaussianProcess:
         if batch_size is None:
             batch_size = num_train
 
-        var_param = [self.raw_means, self.raw_covars, self.raw_weights] # variational parameters
-        hyper_param = self.raw_kernel_params + self.raw_likelihood_params # hyperparameters
+        var_param = [self.raw_means, self.raw_covars, self.raw_weights]  # variational parameters
+        hyper_param = self.raw_kernel_params + self.raw_likelihood_params  # hyperparameters
         if optimize_inducing:
             hyper_param = hyper_param + [self.raw_inducing_inputs]
 
@@ -162,7 +162,7 @@ class GaussianProcess:
                 if loo_iter % display_step == 0:
                     self._print_state(data, test, loss, num_train, iter)
                 loo_iter += 1
-                iter +=1
+                iter += 1
 
     def predict(self, test_inputs, batch_size=None):
         """
@@ -236,8 +236,7 @@ class GaussianProcess:
         inducing_inputs = raw_inducing_inputs
 
         # Build the matrices of covariances between inducing inputs.
-        kernel_mat = [self.kernels[i].kernel(inducing_inputs[i, :, :])
-                        for i in range(self.num_latent)]
+        kernel_mat = [self.kernels[i].kernel(inducing_inputs[i, :, :]) for i in range(self.num_latent)]
         kernel_chol = tf.stack([tf.cholesky(k) for k in kernel_mat], 0)
 
         # Now build the objective function.
@@ -253,8 +252,7 @@ class GaussianProcess:
                                         kernel_chol, train_inputs, train_outputs)
 
         # Finally, build the prediction function.
-        predictions = self._build_predict(weights, means, covars, inducing_inputs,
-                                            kernel_chol, test_inputs)
+        predictions = self._build_predict(weights, means, covars, inducing_inputs, kernel_chol, test_inputs)
 
         return nelbo, loo_loss, predictions
 
@@ -319,12 +317,12 @@ class GaussianProcess:
         # First build a square matrix of normals.
         if self.diag_post:
             # construct normal distributions for all combinations of compontents
-            normal = util.DiagNormal2(means, covars[tf.newaxis, ...] + covars[:, tf.newaxis, ...])
+            normal = util.DiagNormal(means, covars[tf.newaxis, ...] + covars[:, tf.newaxis, ...])
         else:
             # TODO(karl): Can we just stay in cholesky space somehow?
             square = util.mat_square(covars)
             covars_sum = tf.cholesky(square[tf.newaxis, ...] + square[:, tf.newaxis, ...])
-            normal = util.CholNormal2(means, covars_sum)
+            normal = util.CholNormal(means, covars_sum)
         # compute log probability of all means in all normal distributions
         # then sum over all latent functions
         # shape of log_normal_probs: (num_components, num_components)
@@ -332,7 +330,7 @@ class GaussianProcess:
 
         # Now compute the entropy.
         # broadcast `weights` into dimension 1, then do `logsumexp` in that dimension
-        weighted_logsumexp_probs = util.logsumexp(tf.log(weights) + log_normal_probs, 1)
+        weighted_logsumexp_probs = tf.reduce_logsumexp(tf.log(weights) + log_normal_probs, 1)
         # multiply with weights again and then sum over it all
         return -tf.tensordot(weights, weighted_logsumexp_probs, 1)
 
@@ -354,11 +352,11 @@ class GaussianProcess:
             # shape of trace: (num_components, num_latent)
             trace = tf.trace(util.cholesky_solve_br(kernel_chol, tf.matrix_diag(covars)))
         else:
-            trace = tf.reduce_sum(util.diag_mul2(util.cholesky_solve_br(kernel_chol, covars),
-                                                 tf.matrix_transpose(covars)), axis=-1)
+            trace = tf.reduce_sum(util.diag_mul(util.cholesky_solve_br(kernel_chol, covars),
+                                                tf.matrix_transpose(covars)), axis=-1)
 
         # sum_val has the same shape as weights
-        sum_val = tf.reduce_sum(util.CholNormal2(means, kernel_chol).log_prob(0.0) - 0.5 * trace, -1)
+        sum_val = tf.reduce_sum(util.CholNormal(means, kernel_chol).log_prob(0.0) - 0.5 * trace, -1)
 
         # dot product of weights and sum_val
         cross_ent = tf.tensordot(weights, sum_val, 1)
@@ -399,11 +397,11 @@ class GaussianProcess:
             `kern_prods` (num_latent, batch_size, num_inducing) and `kern_sums` (num_latent, batch_size)
         """
         # shape of ind_train_kern: (num_latent, num_inducing, batch_size)
-        ind_train_kern = self.kernels[0].kernel2(inducing_inputs, train_inputs)
+        ind_train_kern = self.kernels[0].kernel(inducing_inputs, train_inputs)
         # Compute A = Kxz.Kzz^(-1) = (Kzz^(-1).Kzx)^T.
         kern_prods = tf.matrix_transpose(tf.cholesky_solve(kernel_chol, ind_train_kern))
         # We only need the diagonal components.
-        kern_sums = (self.kernels[0].diag_kernel(train_inputs) - util.diag_mul2(kern_prods, ind_train_kern))
+        kern_sums = (self.kernels[0].diag_kernel(train_inputs) - util.diag_mul(kern_prods, ind_train_kern))
 
         return kern_prods, kern_sums
 
@@ -434,10 +432,10 @@ class GaussianProcess:
             sample_means (num_components, batch_size, num_latent), sample_vars (num_components, batch_size, num_latent)
         """
         if self.diag_post:
-            quad_form = util.diag_mul2(kern_prods * tf.expand_dims(covars, -2), tf.transpose(kern_prods, [0, 2, 1]))
+            quad_form = util.diag_mul(kern_prods * tf.expand_dims(covars, -2), tf.transpose(kern_prods, [0, 2, 1]))
         else:
             full_covar = util.mat_square(covars)  # same shape as covars
-            quad_form = util.diag_mul2(util.matmul_br(kern_prods, full_covar), tf.matrix_transpose(kern_prods))
+            quad_form = util.diag_mul(util.matmul_br(kern_prods, full_covar), tf.matrix_transpose(kern_prods))
         sample_means = util.matmul_br(kern_prods, means[..., tf.newaxis])  # (num_components, num_latent, batch_size, 1)
         sample_vars = tf.matrix_transpose(kern_sums + quad_form)  # (num_components, x, num_latent)
         return tf.matrix_transpose(tf.squeeze(sample_means, -1)), sample_vars

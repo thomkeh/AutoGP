@@ -11,8 +11,8 @@ SIG_FIGS = 5
 
 class TestCholNormal(unittest.TestCase):
     def chol_normal_log_prob(self, val, mean, covar):
-        chol_normal = util.CholNormal2(tf.constant(mean, dtype=tf.float32),
-                                       tf.constant(covar, dtype=tf.float32))
+        chol_normal = util.CholNormal(tf.constant(mean, dtype=tf.float32),
+                                      tf.constant(covar, dtype=tf.float32))
         return tf.Session().run(chol_normal.log_prob(np.array(val, dtype=np.float32)))
 
     def test_same_mean(self):

@@ -17,7 +17,7 @@ class Normal:
         self.covar = covar
 
 
-class CholNormal2(Normal):
+class CholNormal(Normal):
     def prob(self, val):
         return tf.exp(self.log_prob(val))
 
@@ -35,10 +35,10 @@ class CholNormal2(Normal):
         dim = tf.to_float(tf.shape(self.mean)[-1])
         diff = (val - self.mean)[..., tf.newaxis]  # shape: (num_components, num_latent, num_inducing, 1)
         quad_form = tf.reduce_sum(diff * util.cholesky_solve_br(self.covar, diff), axis=[-2, -1])
-        return -0.5 * (dim * tf.log(2.0 * np.pi) + util.log_cholesky_det2(self.covar) + quad_form)
+        return -0.5 * (dim * tf.log(2.0 * np.pi) + util.log_cholesky_det(self.covar) + quad_form)
 
 
-class DiagNormal2(Normal):
+class DiagNormal(Normal):
     def prob(self, val):
         return tf.exp(self.log_prob(val))
 

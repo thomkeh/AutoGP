@@ -218,7 +218,7 @@ class TestSimpleDiag(TestGaussianProcess):
                                              means=[[[1e-10]]],
                                              covars=[[[1e-10]]],
                                              kernel_chol=[[[1e-10]]])
-        self.assertAlmostEqual(cross_ent, -0.5 * (np.log(2 * np.pi) + np.log(1e-20) + 1.0 + 1e10),
+        self.assertAlmostEqual((-0.5 * (np.log(2 * np.pi) + np.log(1e-20) + 1.0 + 1e10) - cross_ent) / cross_ent, 0,
                                SIG_FIGS)
 
     def test_large_cross_ent(self):

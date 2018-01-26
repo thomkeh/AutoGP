@@ -11,7 +11,7 @@ class Softmax(likelihood.Likelihood):
     def log_cond_prob(self, outputs, latent):
         # shape of `outputs`: (batch_size, output_dim)
         # shape of `latent`: (num_components, num_samples, batch_size, num_latent)
-        # return tf.reduce_sum(outputs * latent, -1) - util.logsumexp(latent, -1)
+        # return tf.reduce_sum(outputs * latent, -1) - tf.reduce_logsumexp(latent, -1)
         # TODO(thomas): the batch_size and output_dim is usually not known
         outputs_tiled = util.broadcast(outputs, latent)
         return -tf.nn.softmax_cross_entropy_with_logits(labels=outputs_tiled, logits=latent)
@@ -35,7 +35,7 @@ class Softmax(likelihood.Likelihood):
         latent = (latent_means[:, tf.newaxis, ...] + tf.sqrt(latent_vars)[:, tf.newaxis, ...] *
                   tf.random_normal([num_components, self.num_samples, num_points, output_dims]))
         # Compute the softmax of all generated latent values in a stable fashion.
-        # softmax = tf.exp(latent - tf.expand_dims(util.logsumexp(latent, 2), 2))
+        # softmax = tf.exp(latent - tf.reduce_logsumexp(latent, 2, keep_dims=True))
         softmax = tf.nn.softmax(latent)
 
         # Estimate the expected value of the softmax and the variance through sampling.

@@ -29,19 +29,18 @@ class ArcCosine(kernel.Kernel):
 
     def recursive_kernel(self, points1, points2, depth):
         if depth == 1:
-            mag_sqr1 = tf.expand_dims(tf.reduce_sum(points1 ** 2, 1), 1)
-            mag_sqr2 = tf.expand_dims(tf.reduce_sum(points2 ** 2, 1), 1)
-            point_prod = points1 @ tf.transpose(points2)
+            mag_sqr1 = tf.reduce_sum(points1 ** 2, 1, keep_dims=True)
+            mag_sqr2 = tf.reduce_sum(points2 ** 2, 1, keep_dims=True)
+            point_prod = tf.matmul(points1, points2, transpose_b=True)  # points1 @ points2.T
         else:
             mag_sqr1 = tf.expand_dims(self.diag_recursive_kernel(points1, depth - 1), 1)
             mag_sqr2 = tf.expand_dims(self.diag_recursive_kernel(points2, depth - 1), 1)
             point_prod = self.recursive_kernel(points1, points2, depth - 1)
 
-        mag_prod = tf.sqrt(mag_sqr1) * tf.transpose(tf.sqrt(mag_sqr2))
-        cos_angles = (2 * point_prod) / (tf.sqrt(1 + 2 * mag_sqr1) * tf.transpose(tf.sqrt(1 + 2 * mag_sqr2)))
+        mag_prod = tf.sqrt(mag_sqr1) * tf.matrix_transpose(tf.sqrt(mag_sqr2))
+        cos_angles = (2 * point_prod) / (tf.sqrt(1 + 2 * mag_sqr1) * tf.matrix_transpose(tf.sqrt(1 + 2 * mag_sqr2)))
 
-        return (((mag_prod ** self.degree) / np.pi) *
-                                        self.angular_func(cos_angles))
+        return (((mag_prod ** self.degree) / np.pi) * self.angular_func(cos_angles))
 
     def diag_kernel(self, points):
         return (self.std_dev ** 2) * self.diag_recursive_kernel(points / self.lengthscale, self.depth) + self.white
