@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def _merge_and_separate(a, b, func):
+def _merge_and_separate(a, b, func, transpose_b=False):
     """
     Helper function to make operations broadcast when they don't support it natively.
 
@@ -13,25 +13,48 @@ def _merge_and_separate(a, b, func):
         a: Tensor
         b: Tensor
         func: a function that takes two arguments
+        transpose_b: whether or not to transpose `b` before applying the function. if this option is used, func has to
+            support it as well.
     Returns:
         broadcasted result
     """
-    b_sh = b.shape.as_list()
-    if len(b_sh) == len(a.shape):
+    a_rank = len(a.shape)
+    b_rank = len(b.shape)
+    if a_rank == b_rank:
         # no need to broadcast; just apply the function
-        return func(a, b)
+        if transpose_b:
+            return func(a, b, transpose_b=True)
+        else:
+            return func(a, b)
 
-    if len(b_sh) == 3 and len(a.shape) == 2:
+    if transpose_b:
+        # working with a transposed `b` is very easy if `a` is only 2-dimensional
+        if b_rank >= 2 and a_rank == 2:
+            b_sh = b.shape.as_list()
+            # this is by far the easiest case and the only one where things are relatively computationally efficient
+            # first we merge all dimensions except the last
+            b_merged = tf.reshape(b, [-1, b_sh[-1]])
+            # then we do the multiplication
+            product = tf.matmul(a, b_merged, transpose_b=True)
+            # finally we separate the dimensions again but we have to be careful because `b_sh` contains the not
+            # transposed version. because of `transpose_b` b_sh[-2] should now be at the place of b_sh[-1]
+            return tf.reshape(product, b_sh[0:-2] + [-1, b_sh[-2]])
+
+        # otherwise we have to do it the hard way:
+        b = tf.matrix_transpose(b)
+
+    b_sh = b.shape.as_list()
+    if b_rank == 3 and a_rank == 2:
         perm_move_to_end = [1, 2, 0]
         shape_merged = [-1, b_sh[2] * b_sh[0]]
         shape_separated = [-1, b_sh[2], b_sh[0]]
         perm_move_to_front = [2, 0, 1]
-    elif len(b_sh) == 4 and len(a.shape) == 2:
+    elif b_rank == 4 and a_rank == 2:
         perm_move_to_end = [2, 3, 0, 1]
         shape_merged = [-1, b_sh[3] * b_sh[0] * b_sh[1]]
         shape_separated = [-1, b_sh[3], b_sh[0], b_sh[1]]
         perm_move_to_front = [2, 3, 0, 1]
-    elif len(b_sh) == 4 and len(a.shape) == 3:
+    elif b_rank == 4 and a_rank == 3:
         perm_move_to_end = [1, 2, 3, 0]
         shape_merged = [b_sh[1], -1, b_sh[3] * b_sh[0]]
         shape_separated = [b_sh[1], -1, b_sh[3], b_sh[0]]
@@ -48,15 +71,15 @@ def _merge_and_separate(a, b, func):
     return tf.transpose(tf.reshape(result, shape_separated), perm_move_to_front)
 
 
-def matmul_br(a, b, transpose_a=False, transpose_b=False):
+def matmul_br(a, b, transpose_b=False):
     """Broadcasting matmul.
 
-    Not all combinations of ranks are supported right now.
+    Not all combinations of ranks are supported right now. It is also not supported to tranpose `a` (but this could be
+    added).
 
     Args:
         a: Tensor
         b: Tensor
-        transpose_a: whether or not to transpose a
         transpose_b: whether or not to transpose b
     Returns:
         Broadcasted result of matrix multiplication.
@@ -67,14 +90,12 @@ def matmul_br(a, b, transpose_a=False, transpose_b=False):
         # first we merge all dimensions except the last
         a_merged = tf.reshape(a, [-1, a_sh[-1]])
         # then we do the multiplication
-        product = tf.matmul(a_merged, b, transpose_a=transpose_a, transpose_b=transpose_b)
+        product = tf.matmul(a_merged, b, transpose_b=transpose_b)
         # finally we separate the dimensions again
         return tf.reshape(product, a_sh[0:-1] + [-1])
 
     # if b has higher rank than a, we have to use a different approach
-    def func(x, y):
-        return tf.matmul(x, y, transpose_a=transpose_a, transpose_b=transpose_b)
-    return _merge_and_separate(a, b, func)
+    return _merge_and_separate(a, b, tf.matmul, transpose_b=transpose_b)
 
 
 def cholesky_solve_br(chol, rhs):
