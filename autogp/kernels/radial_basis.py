@@ -23,11 +23,13 @@ class RadialBasis(kernel.Kernel):
         self.white = tf.constant(white, dtype=tf.float32)
         self.input_scaling = input_scaling
         init_value = tf.constant(lengthscale, dtype=tf.float32)
-        if input_scaling:
-            self.lengthscale = tf.Variable(tf.tile(init_value[:, tf.newaxis], [1, input_dim]))
-        else:
-            self.lengthscale = tf.Variable(init_value)
-        self.std_dev = tf.Variable(std_dev, dtype=tf.float32)
+        with tf.variable_scope("radial_basis_parameters"):
+            if input_scaling:
+                self.lengthscale = tf.get_variable("lengthscale",
+                                                   initializer=tf.tile(init_value[:, tf.newaxis], [1, input_dim]))
+            else:
+                self.lengthscale = tf.get_variable("lengthscale", initializer=init_value)
+            self.std_dev = tf.get_variable("std_dev", initializer=tf.constant(std_dev, dtype=tf.float32))
 
     def kernel(self, points1, points2=None):
         """

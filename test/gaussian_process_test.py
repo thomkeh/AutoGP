@@ -17,6 +17,7 @@ class TestGaussianProcess(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # We expect the child class to instantiate `cls.model` for us.
+        tf.reset_default_graph()
         cls.session = tf.Session()
 
     @classmethod

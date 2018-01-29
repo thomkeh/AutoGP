@@ -8,8 +8,8 @@ class RegressionNetwork(likelihood.Likelihood):
     def __init__(self, output_dim, std_dev, num_samples=5000):
         self.output_dim = output_dim
         self.num_samples = num_samples
-        self.log_std_dev = tf.Variable(np.ones([self.output_dim]) * np.log(std_dev),
-                                         dtype=tf.float32)
+        self.log_std_dev = tf.get_variable("log_std_dev", [self.output_dim],
+                                           initializer=tf.constant_initializer(np.log(std_dev), dtype=tf.float32))
 
     def log_cond_prob(self, outputs, latent):
         weights = latent[..., :self.output_dim]

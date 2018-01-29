@@ -19,12 +19,14 @@ class ArcCosine(kernel.Kernel):
         self.degree = degree
         self.depth = depth
         self.white = tf.constant(white, dtype=tf.float32)[:, tf.newaxis]
-        self.std_dev = tf.Variable(std_dev, dtype=tf.float32)
         init_value = tf.constant(lengthscale, dtype=tf.float32)
-        if input_scaling:
-            self.lengthscale_raw = tf.Variable(tf.tile(init_value[:, tf.newaxis], [1, input_dim]))
-        else:
-            self.lengthscale_raw = tf.Variable(init_value, dtype=tf.float32)
+        with tf.variable_scope("arc_cosine_parameters"):
+            if input_scaling:
+                self.lengthscale_raw = tf.get_variable("lengthscale",
+                                                       initializer=tf.tile(init_value[:, tf.newaxis], [1, input_dim]))
+            else:
+                self.lengthscale_raw = tf.get_variable("lengthscale", initializer=init_value)
+            self.std_dev = tf.get_variable("std_dev", initializer=tf.constant(std_dev, dtype=tf.float32))
 
         # reshape the parameters for easier use later
         self.lengthscale = tf.reshape(self.lengthscale_raw, [self.num_latent, 1, input_dim if input_scaling else 1])

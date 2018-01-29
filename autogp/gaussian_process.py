@@ -54,17 +54,17 @@ class GaussianProcess:
 
         # Define all parameters that get optimized directly in raw form. Some parameters get
         # transformed internally to maintain certain pre-conditions.
-        self.raw_weights = tf.Variable(tf.zeros([self.num_components]))
-        self.raw_means = tf.Variable(tf.zeros([self.num_components, self.num_latent,
-                                               self.num_inducing]))
+        self.raw_weights = tf.get_variable("raw_weights", [self.num_components], initializer=tf.zeros_initializer())
+        self.raw_means = tf.get_variable("raw_means", [self.num_components, self.num_latent, self.num_inducing],
+                                         initializer=tf.zeros_initializer())
         if self.diag_post:
-            self.raw_covars = tf.Variable(tf.ones([self.num_components, self.num_latent,
-                                                   self.num_inducing]))
+            self.raw_covars = tf.get_variable("raw_covars", [self.num_components, self.num_latent, self.num_inducing],
+                                              initializer=tf.ones_initializer())
         else:
-            init_vec = np.zeros([self.num_components, self.num_latent] +
-                                util.tri_vec_shape(self.num_inducing), dtype=np.float32) 
-            self.raw_covars = tf.Variable(init_vec)
-        self.raw_inducing_inputs = tf.Variable(inducing_inputs, dtype=tf.float32)
+            self.raw_covars = tf.get_variable("raw_covars", [self.num_components, self.num_latent] +
+                                              util.tri_vec_shape(self.num_inducing), initializer=tf.zeros_initializer())
+        self.raw_inducing_inputs = tf.get_variable("raw_inducing_inputs",
+                                                   initializer=tf.constant(inducing_inputs, dtype=tf.float32))
         self.raw_likelihood_params = self.likelihood.get_params()
         self.raw_kernel_params = self.kernel.get_params()
 

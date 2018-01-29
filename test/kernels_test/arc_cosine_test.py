@@ -11,6 +11,7 @@ SIG_FIGS = 5
 
 class TestArcCosine(unittest.TestCase):
     def kernel(self, points1, points2=None, degree=0, depth=1):
+        tf.reset_default_graph()
         arc_cosine = kernels.ArcCosine(degree, depth, white=[0.0])
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
@@ -21,6 +22,7 @@ class TestArcCosine(unittest.TestCase):
             return sess.run(arc_cosine.kernel(tf.constant(points1, dtype=tf.float32)))
 
     def diag_kernel(self, points, degree=0, depth=1):
+        tf.reset_default_graph()
         arc_cosine = kernels.ArcCosine(degree, depth, white=[0.0])
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
