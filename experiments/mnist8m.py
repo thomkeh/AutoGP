@@ -28,31 +28,29 @@ def _read32(bytestream):
 
 
 def extract_images(f):
-  """Extract the images into a 4D uint8 numpy array [index, y, x, depth].
+    """Extract the images into a 4D uint8 numpy array [index, y, x, depth].
 
-  Args:
-    f: A file object that can be passed into a gzip reader.
+    Args:
+        f: A file object that can be passed into a gzip reader.
 
-  Returns:
-    data: A 4D unit8 numpy array [index, y, x, depth].
+    Returns:
+        data: A 4D unit8 numpy array [index, y, x, depth].
 
-  Raises:
-    ValueError: If the bytestream does not start with 2051.
-
-  """
-  print('Extracting', f.name)
-  with gzip.GzipFile(fileobj=f) as bytestream:
-    magic = _read32(bytestream)
-    if magic != 2051:
-      raise ValueError('Invalid magic number %d in MNIST image file: %s' %
-                       (magic, f.name))
-    num_images = int(_read32(bytestream))
-    rows = int(_read32(bytestream))
-    cols = int(_read32(bytestream))
-    buf = bytestream.read(rows * cols * num_images)
-    data = np.frombuffer(buf, dtype=np.uint8)
-    data = data.reshape(num_images, rows, cols, 1)
-    return data
+    Raises:
+        ValueError: If the bytestream does not start with 2051.
+    """
+    print('Extracting', f.name)
+    with gzip.GzipFile(fileobj=f) as bytestream:
+        magic = _read32(bytestream)
+        if magic != 2051:
+            raise ValueError('Invalid magic number %d in MNIST image file: %s' % (magic, f.name))
+        num_images = int(_read32(bytestream))
+        rows = int(_read32(bytestream))
+        cols = int(_read32(bytestream))
+        buf = bytestream.read(rows * cols * num_images)
+        data = np.frombuffer(buf, dtype=np.uint8)
+        data = data.reshape(num_images, rows, cols, 1)
+        return data
 
 
 def process_mnist(images, dtype=dtypes.float32, reshape=True):
@@ -119,8 +117,10 @@ if __name__ == '__main__':
 
     # Setup initial values for the model.
     likelihood = likelihoods.Softmax()
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=10.0, input_scaling = IS_ARD) for i in range(10)]
-    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)] #RadialBasis(X.shape[1], input_scaling=True) for i in range(10)]
+    kern = kernels.RadialBasis(data.X.shape[1], lengthscale=[10] * 10, std_dev=[1] * 10, white=[.01] * 10,
+                               input_scaling=IS_ARD)
+    # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)]
+    #RadialBasis(X.shape[1], input_scaling=True) for i in range(10)]
 
     Z = init_z(data.X, NUM_INDUCING)
     m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES)

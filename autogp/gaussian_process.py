@@ -27,14 +27,15 @@ class GaussianProcess:
     """
     def __init__(self,
                  likelihood_func,
-                 kernel_funcs,
+                 kernel_func,
                  inducing_inputs,
                  num_components=1,
                  diag_post=False,
                  num_samples=100):
         # Get the actual functions if they were initialized as strings.
         self.likelihood = likelihood_func
-        self.kernels = kernel_funcs
+        self.kernel = kernel_func
+        assert isinstance(self.kernel, kernels.Kernel)
 
         # Save whether our posterior is diagonal or not.
         self.diag_post = diag_post
@@ -42,11 +43,11 @@ class GaussianProcess:
         # Repeat the inducing inputs for all latent processes if we haven't been given individually
         # specified inputs per process.
         if inducing_inputs.ndim == 2:
-            inducing_inputs = np.tile(inducing_inputs[np.newaxis, :, :], [len(self.kernels), 1, 1])
+            inducing_inputs = np.tile(inducing_inputs[np.newaxis, :, :], [self.kernel.num_latent_functions(), 1, 1])
 
         # Initialize all model dimension constants.
         self.num_components = num_components
-        self.num_latent = len(self.kernels)
+        self.num_latent = self.kernel.num_latent_functions()
         self.num_samples = num_samples
         self.num_inducing = inducing_inputs.shape[1]
         self.input_dim = inducing_inputs.shape[2]
@@ -65,7 +66,7 @@ class GaussianProcess:
             self.raw_covars = tf.Variable(init_vec)
         self.raw_inducing_inputs = tf.Variable(inducing_inputs, dtype=tf.float32)
         self.raw_likelihood_params = self.likelihood.get_params()
-        self.raw_kernel_params = sum([k.get_params() for k in self.kernels], [])
+        self.raw_kernel_params = self.kernel.get_params()
 
         # Define placeholder variables for training and predicting.
         self.num_train = tf.placeholder(tf.float32, shape=[], name="num_train")
@@ -236,8 +237,7 @@ class GaussianProcess:
         inducing_inputs = raw_inducing_inputs
 
         # Build the matrices of covariances between inducing inputs.
-        kernel_mat = [self.kernels[i].kernel(inducing_inputs[i, :, :]) for i in range(self.num_latent)]
-        kernel_chol = tf.stack([tf.cholesky(k) for k in kernel_mat], 0)
+        kernel_chol = tf.cholesky(self.kernel.kernel(inducing_inputs))
 
         # Now build the objective function.
         entropy = self._build_entropy(weights, means, covars)
@@ -397,11 +397,11 @@ class GaussianProcess:
             `kern_prods` (num_latent, batch_size, num_inducing) and `kern_sums` (num_latent, batch_size)
         """
         # shape of ind_train_kern: (num_latent, num_inducing, batch_size)
-        ind_train_kern = self.kernels[0].kernel(inducing_inputs, train_inputs)
+        ind_train_kern = self.kernel.kernel(inducing_inputs, train_inputs)
         # Compute A = Kxz.Kzz^(-1) = (Kzz^(-1).Kzx)^T.
         kern_prods = tf.matrix_transpose(tf.cholesky_solve(kernel_chol, ind_train_kern))
         # We only need the diagonal components.
-        kern_sums = (self.kernels[0].diag_kernel(train_inputs) - util.diag_mul(kern_prods, ind_train_kern))
+        kern_sums = (self.kernel.diag_kernel(train_inputs) - util.diag_mul(kern_prods, ind_train_kern))
 
         return kern_prods, kern_sums
 

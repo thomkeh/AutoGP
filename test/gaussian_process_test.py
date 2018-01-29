@@ -60,11 +60,11 @@ class TestSimpleFull(TestGaussianProcess):
     def setUpClass(cls):
         super(TestSimpleFull, cls).setUpClass()
         likelihood = likelihoods.Gaussian(1.0)
-        kernel = [kernels.RadialBasis(input_dim=1, lengthscale=1.0, std_dev=1.0, white=0.0)]
+        kernel = kernels.RadialBasis(input_dim=1, lengthscale=[1.0], std_dev=[1.0], white=[0.0])
         # In most of our unit test, we will replace this value with something else.
         inducing_inputs = np.array([[1.0]])
         cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_funcs=kernel,
+                                           kernel_func=kernel,
                                            inducing_inputs=inducing_inputs,
                                            num_components=1,
                                            diag_post=False,
@@ -177,11 +177,11 @@ class TestSimpleDiag(TestGaussianProcess):
     def setUpClass(cls):
         super(TestSimpleDiag, cls).setUpClass()
         likelihood = likelihoods.Gaussian(1.0)
-        kernel = [kernels.RadialBasis(input_dim=1, lengthscale=1.0, std_dev=1.0, white=0.0)]
+        kernel = kernels.RadialBasis(input_dim=1, lengthscale=[1.0], std_dev=[1.0], white=[0.0])
         # In most of our unit test, we will replace this value with something else.
         inducing_inputs = np.array([[1.0]])
         cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_funcs=kernel,
+                                           kernel_func=kernel,
                                            inducing_inputs=inducing_inputs,
                                            num_components=1,
                                            diag_post=True,
@@ -252,11 +252,10 @@ class TestMultiFull(TestGaussianProcess):
     def setUpClass(cls):
         super(TestMultiFull, cls).setUpClass()
         likelihood = likelihoods.Softmax()
-        kernel = [kernels.RadialBasis(input_dim=2, lengthscale=1.0, std_dev=1.0, white=0.0)
-                  for i in range(2)]
+        kernel = kernels.RadialBasis(input_dim=2, lengthscale=[1., 1.], std_dev=[1., 1.], white=[0., 0.])
         inducing_locations = np.array([[1.0, 2.0, 3.0, 4.0]])
         cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_funcs=kernel,
+                                           kernel_func=kernel,
                                            inducing_inputs=inducing_locations,
                                            num_components=2,
                                            diag_post=False,

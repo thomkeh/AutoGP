@@ -1,31 +1,43 @@
 import numpy as np
 import tensorflow as tf
 
-from autogp import util
 from . import kernel
 
 
 class ArcCosine(kernel.Kernel):
-    def __init__(self, input_dim, degree=0, depth=1, lengthscale=1.0,
-                 std_dev=1.0, white=1e-4, input_scaling=False):
+    """Kernel based on radial basis functions.
+
+    Instance variables:
+        lengthscale: Tensor(num_latent[, input_dim])
+        std_dev: Tensor(num_latent)
+    """
+    def __init__(self, input_dim, index, degree=0, depth=1, lengthscale=np.ones(1), std_dev=np.ones(1),
+                 white=np.array([1e-4]), input_scaling=False):
+        if len(lengthscale) != len(std_dev) or len(lengthscale) != len(white):
+            raise ValueError("Parameters must have the same length.")
+        self.num_latent = len(lengthscale)
         self.degree = degree
         self.depth = depth
-        self.white = white
-        self.std_dev = tf.Variable([std_dev], dtype=tf.float32)
+        self.white = tf.constant(white, dtype=tf.float32)[:, tf.newaxis]
+        self.std_dev = tf.Variable(std_dev, dtype=tf.float32)
+        init_value = tf.constant(lengthscale, dtype=tf.float32)
         if input_scaling:
-            self.lengthscale = tf.Variable(lengthscale * tf.ones([input_dim]))
+            self.lengthscale_raw = tf.Variable(tf.tile(init_value[:, tf.newaxis], [1, input_dim]))
         else:
-            self.lengthscale = tf.Variable([lengthscale], dtype=tf.float32)
+            self.lengthscale_raw = tf.Variable(init_value, dtype=tf.float32)
+
+        # reshape the parameters for easier use later
+        self.lengthscale = tf.reshape(self.lengthscale_raw, [self.num_latent, 1, input_dim if input_scaling else 1])
 
     def kernel(self, points1, points2=None):
         if points2 is None:
             points2 = points1
-            white_noise = self.white * tf.eye(tf.shape(points1)[0])
+            white_noise = self.white[..., tf.newaxis] * tf.eye(tf.shape(points1)[0])
         else:
             white_noise = 0.0
 
         kern = self.recursive_kernel(points1 / self.lengthscale, points2 / self.lengthscale, self.depth)
-        return (self.std_dev ** 2) * kern + white_noise
+        return (self.std_dev[:, tf.newaxis, tf.newaxis] ** 2) * kern + white_noise
 
     def recursive_kernel(self, points1, points2, depth):
         if depth == 1:
@@ -43,7 +55,8 @@ class ArcCosine(kernel.Kernel):
         return (((mag_prod ** self.degree) / np.pi) * self.angular_func(cos_angles))
 
     def diag_kernel(self, points):
-        return (self.std_dev ** 2) * self.diag_recursive_kernel(points / self.lengthscale, self.depth) + self.white
+        return self.std_dev[:, tf.newaxis]**2 * self.diag_recursive_kernel(points / self.lengthscale, self.depth) + (
+                self.white)
 
     # TODO(karl): Add a memoize decorator.
     # @util.memoize
@@ -70,4 +83,7 @@ class ArcCosine(kernel.Kernel):
             assert False
 
     def get_params(self):
-        return [self.std_dev, self.lengthscale]
+        return [self.std_dev, self.lengthscale_raw]
+
+    def num_latent_functions(self):
+        return self.num_latent
