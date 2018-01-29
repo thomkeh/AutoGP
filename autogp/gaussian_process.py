@@ -10,20 +10,12 @@ class GaussianProcess:
     """
     The class representing the AutoGP model.
 
-    Parameters
-    ----------
-    likelihood_func : subclass of likelihoods.Likelihood
-        An object representing the likelihood function p(y|f).
-    kernel_funcs : list of subclasses of kernels.Kernel
-        A list of one kernel per latent function.
-    inducing_inputs : ndarray
-        An array of initial inducing input locations. Dimensions: num_inducing * input_dim.
-    num_components : int
-        The number of mixture of Gaussian components.
-    diag_post : bool
-        True if the mixture of Gaussians uses a diagonal covariance, False otherwise.
-    num_samples : int
-        The number of samples to approximate the expected log likelihood of the posterior.
+    Instance variables:
+        num_components:
+        num_latent:
+        num_samples:
+        num_inducing:
+        input_dim:
     """
     def __init__(self,
                  likelihood_func,
@@ -32,6 +24,21 @@ class GaussianProcess:
                  num_components=1,
                  diag_post=False,
                  num_samples=100):
+        """
+        Args:
+            likelihood_func: subclass of likelihoods.Likelihood
+                An object representing the likelihood function p(y|f).
+            kernel_func: list of subclasses of kernels.Kernel
+                A list of one kernel per latent function.
+            inducing_inputs: ndarray
+                An array of initial inducing input locations. Dimensions: num_inducing * input_dim.
+            num_components: int
+                The number of mixture of Gaussian components.
+            diag_post: bool
+                True if the mixture of Gaussians uses a diagonal covariance, False otherwise.
+            num_samples: int
+                The number of samples to approximate the expected log likelihood of the posterior.
+        """
         # Get the actual functions if they were initialized as strings.
         self.likelihood = likelihood_func
         self.kernel = kernel_func
@@ -93,34 +100,32 @@ class GaussianProcess:
         self.optimizer = None
         self.train_step = None
 
-    def fit(self, data, optimizer, loo_steps=10, var_steps=10, epochs=200,
-            batch_size=None, display_step=1, hyper_with_elbo=True,
-            optimize_inducing=True, test=None, loss=None):
+    def fit(self, data, optimizer, loo_steps=10, var_steps=10, epochs=200, batch_size=None, display_step=1,
+            hyper_with_elbo=True, optimize_inducing=True, test=None, loss=None):
         """
         Fit the Gaussian process model to the given data.
 
-        Parameters
-        ----------
-        data : subclass of datasets.DataSet
-            The train inputs and outputs.
-        optimizer : TensorFlow optimizer
-            The optimizer to use in the fitting process.
-        loo_steps : int
-            Number of steps    to update hyper-parameters using loo objective
-        var_steps : int
-            Number of steps to update    variational parameters using variational objective (elbo).
-        epochs : int
-            The number of epochs to optimize the model for.
-        batch_size : int
-            The number of datapoints to use per mini-batch when training. If batch_size is None,
-            then we perform batch gradient descent.
-        display_step : int
-            The frequency at which the objective values are printed out.
-        hyper_with_elbo: bool
-            True to optimize hyper-parameters using the elbo objective, in addition to using loo objective
-            False to optimizer only variational posterior parameters with elbo objective
-        optimize_inducing: bool
-            True to optimizr inducing inputs
+        Args:
+            data: subclass of datasets.DataSet
+                The train inputs and outputs.
+            optimizer: TensorFlow optimizer
+                The optimizer to use in the fitting process.
+            loo_steps: int
+                Number of steps to update hyper-parameters using loo objective
+            var_steps: int
+                Number of steps to update    variational parameters using variational objective (elbo).
+            epochs: int
+                The number of epochs to optimize the model for.
+            batch_size: int
+                The number of datapoints to use per mini-batch when training. If batch_size is None,
+                then we perform batch gradient descent.
+            display_step: int
+                The frequency at which the objective values are printed out.
+            hyper_with_elbo: bool
+                True to optimize hyper-parameters using the elbo objective, in addition to using loo objective
+                False to optimizer only variational posterior parameters with elbo objective
+            optimize_inducing: bool
+                True to optimizr inducing inputs
         """
         num_train = data.num_examples
         if batch_size is None:
@@ -169,20 +174,18 @@ class GaussianProcess:
         """
         Predict outputs given inputs.
 
-        Parameters
-        ----------
-        test_inputs : ndarray
-            Points on which we wish to make predictions. Dimensions: num_test * input_dim.
-        batch_size : int
-            The size of the batches we make predictions on. If batch_size is None, predict on the
-            entire test set at once.
+        Args:
+            test_inputs: ndarray
+                Points on which we wish to make predictions. Dimensions: num_test * input_dim.
+            batch_size: int
+                The size of the batches we make predictions on. If batch_size is None, predict on the
+                entire test set at once.
 
-        Returns
-        -------
-        ndarray
-            The predicted mean of the test inputs. Dimensions: num_test * output_dim.
-        ndarray
-            The predicted variance of the test inputs. Dimensions: num_test * output_dim.
+        Returns:
+            ndarray
+                The predicted mean of the test inputs. Dimensions: (num_test, output_dim).
+            ndarray
+                The predicted variance of the test inputs. Dimensions: (num_test, output_dim).
         """
         if batch_size is None:
             num_batches = 1
@@ -406,7 +409,7 @@ class GaussianProcess:
         return kern_prods, kern_sums
 
     def _build_samples(self, kern_prods, kern_sums, means, covars):
-        """can handle 4D input
+        """Produce samples according to the given distribution.
 
         Args:
             kern_prods: (num_latent, batch_size, num_inducing)
@@ -421,7 +424,7 @@ class GaussianProcess:
                 tf.random_normal([self.num_components, self.num_samples, batch_size, self.num_latent]))
 
     def _build_sample_info(self, kern_prods, kern_sums, means, covars):
-        """Get means and variances of a distribution by sampling
+        """Get means and variances of a distribution
 
         Args:
             kern_prods: (num_latent, batch_size, num_inducing)
@@ -432,7 +435,7 @@ class GaussianProcess:
             sample_means (num_components, batch_size, num_latent), sample_vars (num_components, batch_size, num_latent)
         """
         if self.diag_post:
-            quad_form = util.diag_mul(kern_prods * tf.expand_dims(covars, -2), tf.transpose(kern_prods, [0, 2, 1]))
+            quad_form = util.diag_mul(kern_prods * covars[..., tf.newaxis, :], tf.matrix_transpose(kern_prods))
         else:
             full_covar = util.mat_square(covars)  # same shape as covars
             quad_form = util.diag_mul(util.matmul_br(kern_prods, full_covar), tf.matrix_transpose(kern_prods))
