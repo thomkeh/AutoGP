@@ -23,11 +23,12 @@ likelihood = autogp.lik.Gaussian()
 kernel = autogp.cov.SquaredExponential(1)
 inference = autogp.inf.VariationalInference(kernel, likelihood)
 inducing_inputs = xtrain
-model = autogp.GaussianProcess(inducing_inputs, kernel, inference, likelihood)
+model = autogp.GaussianProcess(inducing_inputs, kernel, inference, likelihood, inducing_outputs=ytrain)
 
 # Train the model.
 optimizer = tf.train.RMSPropOptimizer(0.005)
-model.fit(data, optimizer, batch_size=1, loo_steps=10, var_steps=10, epochs=100)
+model.fit(data, optimizer, batch_size=None, loo_steps=0, var_steps=1, epochs=100, optimize_inducing=False,
+          hyper_with_elbo=True)
 
 # Predict new inputs.
 ypred, _ = model.predict(xtest)
