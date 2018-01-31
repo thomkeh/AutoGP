@@ -71,31 +71,57 @@ def _merge_and_separate(a, b, func, transpose_b=False):
     return tf.transpose(tf.reshape(result, shape_separated), perm_move_to_front)
 
 
-def matmul_br(a, b, transpose_b=False):
+def matmul_br(a, b, transpose_a=False, transpose_b=False):
     """Broadcasting matmul.
 
-    Not all combinations of ranks are supported right now. It is also not supported to tranpose `a` (but this could be
-    added).
+    Not all combinations of ranks are supported right now.
 
     Args:
         a: Tensor
         b: Tensor
+        transpose_a: whether or not to transpose a
         transpose_b: whether or not to transpose b
     Returns:
         Broadcasted result of matrix multiplication.
     """
-    a_sh = a.shape.as_list()
-    if len(b.shape) == 2 and len(a_sh) >= 2:
-        # this is by far the easiest case and the only one where things are relatively computationally efficient
-        # first we merge all dimensions except the last
-        a_merged = tf.reshape(a, [-1, a_sh[-1]])
-        # then we do the multiplication
-        product = tf.matmul(a_merged, b, transpose_b=transpose_b)
-        # finally we separate the dimensions again
-        return tf.reshape(product, a_sh[0:-1] + [-1])
-
-    # if b has higher rank than a, we have to use a different approach
-    return _merge_and_separate(a, b, tf.matmul, transpose_b=transpose_b)
+    a_dim = len(a.shape)
+    b_dim = len(b.shape)
+    # the output always has indices that are the tail of 'jklm'
+    # the dimension to reduce is always 'x'
+    # the a indices always end in 'l'
+    # the b indices always end in 'm' and skip 'l'
+    # easy example when both are 3D and not transposing: 'klx,kxm->klm'
+    if a_dim == 2:
+        a_index_prefix = ''
+    elif a_dim == 3:
+        a_index_prefix = 'k'
+    elif a_dim == 4:
+        a_index_prefix = 'jk'
+    else:
+        ValueError("not supported")
+    if transpose_a:
+        a_index_suffix = 'xl'
+    else:
+        a_index_suffix = 'lx'
+    if b_dim == 2:
+        b_index_prefix = ''
+    elif b_dim == 3:
+        b_index_prefix = 'k'
+    elif b_dim == 4:
+        b_index_prefix = 'jk'
+    else:
+        ValueError("not supported")
+    if transpose_b:
+        b_index_suffix = 'mx'
+    else:
+        b_index_suffix = 'xm'
+    if max(a_dim, b_dim) == 3:
+        out_indices = 'klm'
+    elif max(a_dim, b_dim) == 4:
+        out_indices = 'jklm'
+    else:
+        ValueError("not supported")
+    return tf.einsum(a_index_prefix + a_index_suffix + ',' + b_index_prefix + b_index_suffix + '->' + out_indices, a, b)
 
 
 def cholesky_solve_br(chol, rhs):
