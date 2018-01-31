@@ -41,7 +41,7 @@ class SquaredExponential(cov.Cov):
         points1 = points1 / lengthscale_br
         magnitude_square1 = tf.reduce_sum(points1**2, -1, keep_dims=True)
         if points2 is None:
-            white_noise = self.white * tf.eye(points1.shape[-2].value)
+            white_noise = self.white * tf.eye(tf.shape(points1)[-2])
             points2 = points1
             product = tf.matmul(points1, points2, transpose_b=True)
             magnitude_square2_t = tf.matrix_transpose(magnitude_square1)

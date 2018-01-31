@@ -25,7 +25,8 @@ class GaussianProcess:
                  # mean_func=mean.ZeroOffset(),
                  lik_func,
                  num_components=1,
-                 diag_post=False):
+                 diag_post=False,
+                 inducing_outputs=None):
         """
         Args:
             lik_func: subclass of likelihoods.Likelihood
@@ -52,8 +53,8 @@ class GaussianProcess:
             inducing_inputs = np.tile(inducing_inputs[np.newaxis, :, :], [num_latent, 1, 1])
 
         # Initialize all model dimension constants.
-        num_inducing = inducing_inputs.shape[1]
-        self.input_dim = inducing_inputs.shape[2]
+        num_inducing = inducing_inputs.shape[-2]
+        self.input_dim = inducing_inputs.shape[-1]
 
         # Define all parameters that get optimized directly in raw form. Some parameters get
         # transformed internally to maintain certain pre-conditions.
@@ -92,9 +93,10 @@ class GaussianProcess:
             self.nelbo, self.predictions = inf.exact.build_graph(self.raw_inducing_inputs,
                                                                  self.inducing_outputs,
                                                                  self.test_inputs,
-                                                                 self.num_train,
+                                                                 num_inducing,
                                                                  cov_func.num_latent_functions(),
-                                                                 cov_func)
+                                                                 cov_func,
+                                                                 lik_func)
         else:
             self.nelbo, self.loo_loss, self.predictions = self.inf.inference(self.raw_weights,
                                                                              self.raw_means,
@@ -112,7 +114,7 @@ class GaussianProcess:
         self.train_step = None
 
     def fit(self, data, optimizer, loo_steps=10, var_steps=10, epochs=200, batch_size=None, display_step=1,
-            hyper_with_elbo=True, optimize_inducing=True, test=None, loss=None):
+            hyper_with_elbo=True, optimize_inducing=True, test=None, loss=None, only_hyper=False):
         """
         Fit the Gaussian process model to the given data.
 
@@ -149,11 +151,14 @@ class GaussianProcess:
 
         if self.optimizer != optimizer:
             self.optimizer = optimizer
-            loo_train_step = optimizer.minimize(self.loo_loss, var_list=hyper_param)
-            if (hyper_with_elbo) is True:
-                self.train_step = optimizer.minimize(self.nelbo, var_list=var_param + hyper_param)
+            if only_hyper:
+                self.train_step = optimizer.minimize(self.nelbo, var_list=hyper_param)
             else:
-                self.train_step = optimizer.minimize(self.nelbo, var_list=var_param)
+                loo_train_step = optimizer.minimize(self.loo_loss, var_list=hyper_param)
+                if hyper_with_elbo:
+                    self.train_step = optimizer.minimize(self.nelbo, var_list=var_param + hyper_param)
+                else:
+                    self.train_step = optimizer.minimize(self.nelbo, var_list=var_param)
 
             self.session.run(tf.global_variables_initializer())
 
@@ -166,18 +171,18 @@ class GaussianProcess:
                                                              self.train_outputs: batch[1],
                                                              self.num_train: num_train})
                 if var_iter % display_step == 0:
-                    self._print_state(data, test, loss, num_train, step)
+                    self._print_state(data, test, loss, num_train, step, only_hyper)
                 var_iter += 1
                 step += 1
 
             loo_iter = 0
-            while loo_iter < loo_steps:
+            while loo_iter < loo_steps and not only_hyper:
                 batch = data.next_batch(batch_size)
                 self.session.run(loo_train_step, feed_dict={self.train_inputs: batch[0],
                                                             self.train_outputs: batch[1],
                                                             self.num_train: num_train})
                 if loo_iter % display_step == 0:
-                    self._print_state(data, test, loss, num_train, step)
+                    self._print_state(data, test, loss, num_train, step, False)
                 loo_iter += 1
                 step += 1
 
@@ -212,16 +217,18 @@ class GaussianProcess:
 
         return np.concatenate(pred_means, axis=0), np.concatenate(pred_vars, axis=0)
 
-    def _print_state(self, data, test, loss, num_train, step):
+    def _print_state(self, data, test, loss, num_train, step, only_hyper):
         if num_train <= 100000:
             nelbo = self.session.run(self.nelbo, feed_dict={self.train_inputs: data.X,
                                                             self.train_outputs: data.Y,
                                                             self.num_train: num_train})
-            loo = self.session.run(self.loo_loss, feed_dict={self.train_inputs: data.X,
-                                                             self.train_outputs: data.Y,
-                                                             self.num_train: num_train})
             print(f"step={step!r} [epoch={data.epochs_completed!r}] nelbo={nelbo!r}", end=" ")
-            print(f"loo={loo!r}")
+            if not only_hyper:
+                loo = self.session.run(self.loo_loss, feed_dict={self.train_inputs: data.X,
+                                                                 self.train_outputs: data.Y,
+                                                                 self.num_train: num_train})
+                print(f"loo={loo!r}", end="")
+            print("")
 
         if loss is not None:
             ypred = self.predict(test.X)[0]

@@ -19,8 +19,8 @@ xtest = inputs[idx[N:]]
 ytest = outputs[idx[N:]]
 
 # Initialize the Gaussian process.
-likelihood = autogp.lik.Gaussian()
-kernel = autogp.cov.SquaredExponential(1)
+likelihood = autogp.lik.Gaussian(.2)
+kernel = autogp.cov.SquaredExponential(1, white=0.001)
 inference = autogp.inf.VariationalInference(kernel, likelihood)
 inducing_inputs = xtrain
 model = autogp.GaussianProcess(inducing_inputs, kernel, inference, likelihood, inducing_outputs=ytrain)
@@ -28,7 +28,7 @@ model = autogp.GaussianProcess(inducing_inputs, kernel, inference, likelihood, i
 # Train the model.
 optimizer = tf.train.RMSPropOptimizer(0.005)
 model.fit(data, optimizer, batch_size=None, loo_steps=0, var_steps=1, epochs=100, optimize_inducing=False,
-          hyper_with_elbo=True)
+          only_hyper=True)
 
 # Predict new inputs.
 ypred, _ = model.predict(xtest)
