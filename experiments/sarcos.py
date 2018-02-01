@@ -3,8 +3,8 @@ import subprocess
 import sklearn.cluster
 import numpy as np
 import autogp
-from autogp import likelihoods
-from autogp import kernels
+from autogp import lik
+from autogp import cov
 import tensorflow as tf
 from autogp import datasets
 from autogp import util
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     test = datasets.DataSet(d['test_inputs'].astype(np.float32), d['test_outputs'].astype(np.float32))
 
     # Setup initial values for the model.
-    likelihood = likelihoods.RegressionNetwork(7, 0.1)
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=8.0, input_scaling = IS_ARD) for i in range(8)]
+    likelihood = lik.RegressionNetwork(7, 0.1)
+    kern = [cov.SquaredExponential(data.X.shape[1], length_scale=8.0, input_scaling = IS_ARD) for i in range(8)]
     # kern = [kernels.ArcCosine(data.X.shape[1], 1, 3, 5.0, 1.0, input_scaling=True) for i in range(10)]
 
     Z = init_z(data.X, NUM_INDUCING)

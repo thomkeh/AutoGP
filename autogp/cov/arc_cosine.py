@@ -1,37 +1,35 @@
 import numpy as np
 import tensorflow as tf
 
-from . import kernel
+from . import cov
 
 
-class ArcCosine(kernel.Kernel):
+class ArcCosine(cov.Cov):
     """Kernel based on radial basis functions.
 
     Instance variables:
         lengthscale: Tensor(num_latent[, input_dim])
         std_dev: Tensor(num_latent)
     """
-    def __init__(self, input_dim, index, degree=0, depth=1, lengthscale=np.ones(1), std_dev=np.ones(1),
+    def __init__(self, input_dim, output_dim=1, degree=0, depth=1, length_scale=np.ones(1), std_dev=np.ones(1),
                  white=np.array([1e-4]), input_scaling=False):
-        if len(lengthscale) != len(std_dev) or len(lengthscale) != len(white):
-            raise ValueError("Parameters must have the same length.")
-        self.num_latent = len(lengthscale)
+        self.num_latent = output_dim
         self.degree = degree
         self.depth = depth
         self.white = tf.constant(white, dtype=tf.float32)[:, tf.newaxis]
-        init_value = tf.constant(lengthscale, dtype=tf.float32)
-        with tf.variable_scope("arc_cosine_parameters"):
+        init_value = tf.constant_initializer(length_scale, dtype=tf.float32)
+        with tf.variable_scope("radial_basis_parameters"):
             if input_scaling:
-                self.lengthscale_raw = tf.get_variable("lengthscale",
-                                                       initializer=tf.tile(init_value[:, tf.newaxis], [1, input_dim]))
+                self.length_scale_raw = tf.get_variable("length_scale", [output_dim, input_dim], initializer=init_value)
             else:
-                self.lengthscale_raw = tf.get_variable("lengthscale", initializer=init_value)
-            self.std_dev = tf.get_variable("std_dev", initializer=tf.constant(std_dev, dtype=tf.float32))
+                self.length_scale_raw = tf.get_variable("length_scale", [output_dim], initializer=init_value)
+            self.std_dev = tf.get_variable("std_dev", [output_dim],
+                                           initializer=tf.constant_initializer(std_dev, dtype=tf.float32))
 
         # reshape the parameters for easier use later
-        self.lengthscale = tf.reshape(self.lengthscale_raw, [self.num_latent, 1, input_dim if input_scaling else 1])
+        self.lengthscale = tf.reshape(self.length_scale_raw, [self.num_latent, 1, input_dim if input_scaling else 1])
 
-    def kernel(self, points1, points2=None):
+    def cov_func(self, points1, points2=None):
         if points2 is None:
             points2 = points1
             white_noise = self.white[..., tf.newaxis] * tf.eye(tf.shape(points1)[0])
@@ -56,7 +54,7 @@ class ArcCosine(kernel.Kernel):
 
         return (((mag_prod ** self.degree) / np.pi) * self.angular_func(cos_angles))
 
-    def diag_kernel(self, points):
+    def diag_cov_func(self, points):
         return self.std_dev[:, tf.newaxis]**2 * self.diag_recursive_kernel(points / self.lengthscale, self.depth) + (
                 self.white)
 
@@ -85,7 +83,7 @@ class ArcCosine(kernel.Kernel):
             assert False
 
     def get_params(self):
-        return [self.std_dev, self.lengthscale_raw]
+        return [self.std_dev, self.length_scale_raw]
 
     def num_latent_functions(self):
         return self.num_latent

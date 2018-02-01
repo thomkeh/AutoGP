@@ -1,8 +1,8 @@
 import sklearn.cluster
 import numpy as np
 import autogp
-from autogp import likelihoods
-from autogp import kernels
+from autogp import lik
+from autogp import cov
 import tensorflow as tf
 from autogp import datasets
 from autogp import losses
@@ -116,9 +116,9 @@ if __name__ == '__main__':
     data, test = import_mnist()
 
     # Setup initial values for the model.
-    likelihood = likelihoods.Softmax()
-    kern = kernels.RadialBasis(data.X.shape[1], lengthscale=[10] * 10, std_dev=[1] * 10, white=[.01] * 10,
-                               input_scaling=IS_ARD)
+    likelihood = lik.Softmax()
+    kern = cov.SquaredExponential(data.X.shape[1], length_scale=[10] * 10, std_dev=[1] * 10, white=[.01] * 10,
+                                  input_scaling=IS_ARD)
     # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)]
     #RadialBasis(X.shape[1], input_scaling=True) for i in range(10)]
 

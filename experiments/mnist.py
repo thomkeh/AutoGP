@@ -1,7 +1,8 @@
 import sklearn.cluster
 import autogp
-from autogp import likelihoods
-from autogp import kernels
+from autogp import lik
+from autogp import cov
+from autogp import inf
 import tensorflow as tf
 from autogp import datasets
 from autogp import losses
@@ -29,14 +30,15 @@ if __name__ == '__main__':
     data, test, _ = datasets.import_mnist()
 
     # Setup initial values for the model.
-    likelihood = likelihoods.Softmax()
-    kern = kernels.RadialBasis(data.X.shape[1], lengthscale=[10] * 10, std_dev=[1] * 10, white=[.01] * 10,
-                               input_scaling=IS_ARD)
+    likelihood = lik.Softmax()
+    kern = cov.SquaredExponential(data.X.shape[1], output_dim=10, length_scale=10, std_dev=1, white=.01,
+                                  input_scaling=IS_ARD)
     # kern = [kernels.ArcCosine(X.shape[1], 2, 3, 5.0, 1.0, input_scaling=True) for i in range(10)]
     # RadialBasis(X.shape[1], input_scaling=True) for i in xrange(10)]
 
     Z = init_z(data.X, NUM_INDUCING)
-    m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES)
+    inf = inf.VariationalInference(kern, likelihood, num_samples=NUM_SAMPLES)
+    m = autogp.GaussianProcess(Z, kern, inf, likelihood)
 
     # setting up loss to be reported during training
     error_rate = losses.ZeroOneLoss(data.Dout)
