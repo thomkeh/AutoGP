@@ -1,11 +1,11 @@
 import tensorflow as tf
 
 
-def _merge_and_separate(a, b, func, transpose_b=False):
+def _merge_and_separate(a, b, func):
     """
     Helper function to make operations broadcast when they don't support it natively.
 
-    The shape of a must be a subset of `b` in the sense that for example `b` has shape (j, k, l, m) and `a` has shape
+    The shape of `a` must be a subset of `b` in the sense that for example `b` has shape (j, k, l, m) and `a` has shape
     (k, n, l) or (n, l) (for (j, k, n, l) you can just use the regular operation). Also supported is `b` with shape
     (j, k, l) and `a` with shape (n, k).
 
@@ -13,8 +13,6 @@ def _merge_and_separate(a, b, func, transpose_b=False):
         a: Tensor
         b: Tensor
         func: a function that takes two arguments
-        transpose_b: whether or not to transpose `b` before applying the function. if this option is used, func has to
-            support it as well.
     Returns:
         broadcasted result
     """
@@ -22,26 +20,7 @@ def _merge_and_separate(a, b, func, transpose_b=False):
     b_rank = len(b.shape)
     if a_rank == b_rank:
         # no need to broadcast; just apply the function
-        if transpose_b:
-            return func(a, b, transpose_b=True)
-        else:
-            return func(a, b)
-
-    if transpose_b:
-        # working with a transposed `b` is very easy if `a` is only 2-dimensional
-        if b_rank >= 2 and a_rank == 2:
-            b_sh = b.shape.as_list()
-            # this is by far the easiest case and the only one where things are relatively computationally efficient
-            # first we merge all dimensions except the last
-            b_merged = tf.reshape(b, [-1, b_sh[-1]])
-            # then we do the multiplication
-            product = tf.matmul(a, b_merged, transpose_b=True)
-            # finally we separate the dimensions again but we have to be careful because `b_sh` contains the not
-            # transposed version. because of `transpose_b` b_sh[-2] should now be at the place of b_sh[-1]
-            return tf.reshape(product, b_sh[0:-2] + [-1, b_sh[-2]])
-
-        # otherwise we have to do it the hard way:
-        b = tf.matrix_transpose(b)
+        return func(a, b)
 
     b_sh = b.shape.as_list()
     if b_rank == 3 and a_rank == 2:
@@ -74,7 +53,7 @@ def _merge_and_separate(a, b, func, transpose_b=False):
 def matmul_br(a, b, transpose_a=False, transpose_b=False):
     """Broadcasting matmul.
 
-    Not all combinations of ranks are supported right now.
+    Supported only up to 5 dimensional tensors.
 
     Args:
         a: Tensor
@@ -86,41 +65,23 @@ def matmul_br(a, b, transpose_a=False, transpose_b=False):
     """
     a_dim = len(a.shape)
     b_dim = len(b.shape)
-    # the output always has indices that are the tail of 'jklm'
+    # the output always has indices that are the tail of 'ijklm'
     # the dimension to reduce is always 'x'
     # the a indices always end in 'l'
     # the b indices always end in 'm' and skip 'l'
     # easy example when both are 3D and not transposing: 'klx,kxm->klm'
-    if a_dim == 2:
-        a_index_prefix = ''
-    elif a_dim == 3:
-        a_index_prefix = 'k'
-    elif a_dim == 4:
-        a_index_prefix = 'jk'
-    else:
-        ValueError("not supported")
-    if transpose_a:
-        a_index_suffix = 'xl'
-    else:
-        a_index_suffix = 'lx'
-    if b_dim == 2:
-        b_index_prefix = ''
-    elif b_dim == 3:
-        b_index_prefix = 'k'
-    elif b_dim == 4:
-        b_index_prefix = 'jk'
-    else:
-        ValueError("not supported")
-    if transpose_b:
-        b_index_suffix = 'mx'
-    else:
-        b_index_suffix = 'xm'
-    if max(a_dim, b_dim) == 3:
-        out_indices = 'klm'
-    elif max(a_dim, b_dim) == 4:
-        out_indices = 'jklm'
-    else:
-        ValueError("not supported")
+    max_dim = max(a_dim, b_dim)
+    if max_dim > 5 or min(a_dim, b_dim) < 2:
+        raise ValueError("dimensions over 5 or under 2 are not supported")
+    # the index prefix is at most 'ijk' for 5 dimensional tensors and at the least '' (empty) for 2 dimensional tensors
+    a_index_prefix = 'ijk'[5-a_dim:]
+    b_index_prefix = 'ijk'[5-b_dim:]
+
+    # the last two dimensions are always there. they depend on whether the tensor is transposed or  not
+    a_index_suffix = 'xl' if transpose_a else 'lx'
+    b_index_suffix = 'mx' if transpose_b else 'xm'
+
+    out_indices = 'ijklm'[5-max_dim:]
     return tf.einsum(a_index_prefix + a_index_suffix + ',' + b_index_prefix + b_index_suffix + '->' + out_indices, a, b)
 
 
