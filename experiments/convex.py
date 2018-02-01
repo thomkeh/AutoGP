@@ -1,7 +1,7 @@
 import autogp
 from autogp import datasets
-from autogp import kernels
-from autogp import likelihoods
+from autogp import cov
+from autogp import lik
 from autogp import losses
 from autogp import util
 import numpy as np
@@ -83,14 +83,14 @@ data = datasets.DataSet(train_X, train_Y)
 test = datasets.DataSet(test_X, test_Y)
 
 Z = init_z(data.X, NUM_INDUCING)
-likelihood = likelihoods.Logistic()  # Setup initial values for the model.
+likelihood = lik.Logistic()  # Setup initial values for the model.
 
 if KERNEL == 'arccosine':
-    kern = [kernels.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH, lengthscale=LENGTHSCALE, std_dev=1.0,
-                              input_scaling=IS_ARD, white=LATENT_NOISE) for i in range(1)]
+    kern = [cov.ArcCosine(data.X.shape[1], degree=DEGREE, depth=DEPTH, lengthscale=LENGTHSCALE, std_dev=1.0,
+                          input_scaling=IS_ARD, white=LATENT_NOISE) for i in range(1)]
 else:
-    kern = [kernels.RadialBasis(data.X.shape[1], lengthscale=LENGTHSCALE, input_scaling=IS_ARD,
-                                white=LATENT_NOISE) for i in range(1)]
+    kern = [cov.SquaredExponential(data.X.shape[1], length_scale=LENGTHSCALE, input_scaling=IS_ARD,
+                                   white=LATENT_NOISE) for i in range(1)]
 
 
 m = autogp.GaussianProcess(likelihood, kern, Z, num_samples=NUM_SAMPLES, num_components=NUM_COMPONENTS)

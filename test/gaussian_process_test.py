@@ -6,8 +6,9 @@ import scipy.stats
 import tensorflow as tf
 
 import autogp
-from autogp import kernels
-from autogp import likelihoods
+from autogp import cov
+from autogp import lik
+from autogp import inf
 
 
 SIG_FIGS = 5
@@ -26,14 +27,14 @@ class TestGaussianProcess(unittest.TestCase):
 
     @classmethod
     def entropy(cls, weights, means, covars):
-        entropy = cls.model._build_entropy(weights=tf.constant(weights, dtype=tf.float32),
+        entropy = cls.inf._build_entropy(weights=tf.constant(weights, dtype=tf.float32),
                                            means=tf.constant(means, dtype=tf.float32),
                                            covars=tf.constant(covars, dtype=tf.float32))
         return cls.session.run(entropy)
 
     @classmethod
     def cross_ent(cls, weights, means, covars, kernel_chol):
-        cross_ent = cls.model._build_cross_ent(weights=tf.constant(weights, dtype=tf.float32),
+        cross_ent = cls.inf._build_cross_ent(weights=tf.constant(weights, dtype=tf.float32),
                                                means=tf.constant(means, dtype=tf.float32),
                                                covars=tf.constant(covars, dtype=tf.float32),
                                                kernel_chol=tf.constant(kernel_chol, dtype=tf.float32))
@@ -41,7 +42,7 @@ class TestGaussianProcess(unittest.TestCase):
 
     @classmethod
     def interim_vals(cls, kernel_chol, inducing_inputs, train_inputs):
-        kern_prods, kern_sums = cls.model._build_interim_vals(
+        kern_prods, kern_sums = cls.inf._build_interim_vals(
             kernel_chol=tf.constant(kernel_chol, dtype=tf.float32),
             inducing_inputs=tf.constant(inducing_inputs, dtype=tf.float32),
             train_inputs=tf.constant(train_inputs, dtype=tf.float32))
@@ -49,7 +50,7 @@ class TestGaussianProcess(unittest.TestCase):
 
     @classmethod
     def sample_info(cls, kern_prods, kern_sums, means, covars):
-        mean, var = cls.model._build_sample_info(kern_prods=tf.constant(kern_prods, dtype=tf.float32),
+        mean, var = cls.inf._build_sample_info(kern_prods=tf.constant(kern_prods, dtype=tf.float32),
                                                  kern_sums=tf.constant(kern_sums, dtype=tf.float32),
                                                  means=tf.constant(means, dtype=tf.float32),
                                                  covars=tf.constant(covars, dtype=tf.float32))
@@ -60,16 +61,17 @@ class TestSimpleFull(TestGaussianProcess):
     @classmethod
     def setUpClass(cls):
         super(TestSimpleFull, cls).setUpClass()
-        likelihood = likelihoods.Gaussian(1.0)
-        kernel = kernels.RadialBasis(input_dim=1, lengthscale=[1.0], std_dev=[1.0], white=[0.0])
+        likelihood = lik.Gaussian(1.0)
+        kernel = cov.SquaredExponential(input_dim=1, length_scale=[1.0], std_dev=[1.0], white=[0.0])
         # In most of our unit test, we will replace this value with something else.
         inducing_inputs = np.array([[1.0]])
-        cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_func=kernel,
+        cls.inf = inf.VariationalInference(num_samples=10, lik_func=likelihood, cov_func=kernel, num_components=1)
+        cls.model = autogp.GaussianProcess(lik_func=likelihood,
+                                           cov_func=kernel,
                                            inducing_inputs=inducing_inputs,
                                            num_components=1,
                                            diag_post=False,
-                                           num_samples=10)
+                                           inf_func=cls.inf)
         cls.session.run(tf.global_variables_initializer())
 
     def test_simple_entropy(self):
@@ -177,16 +179,18 @@ class TestSimpleDiag(TestGaussianProcess):
     @classmethod
     def setUpClass(cls):
         super(TestSimpleDiag, cls).setUpClass()
-        likelihood = likelihoods.Gaussian(1.0)
-        kernel = kernels.RadialBasis(input_dim=1, lengthscale=[1.0], std_dev=[1.0], white=[0.0])
+        likelihood = lik.Gaussian(1.0)
+        kernel = cov.SquaredExponential(input_dim=1, length_scale=[1.0], std_dev=[1.0], white=[0.0])
         # In most of our unit test, we will replace this value with something else.
         inducing_inputs = np.array([[1.0]])
-        cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_func=kernel,
+        cls.inf = inf.VariationalInference(num_samples=10, lik_func=likelihood, cov_func=kernel, num_components=1,
+                                           diag_post=True)
+        cls.model = autogp.GaussianProcess(lik_func=likelihood,
+                                           cov_func=kernel,
                                            inducing_inputs=inducing_inputs,
                                            num_components=1,
                                            diag_post=True,
-                                           num_samples=10)
+                                           inf_func=cls.inf)
         cls.session.run(tf.global_variables_initializer())
 
     def test_simple_entropy(self):
@@ -252,15 +256,16 @@ class TestMultiFull(TestGaussianProcess):
     @classmethod
     def setUpClass(cls):
         super(TestMultiFull, cls).setUpClass()
-        likelihood = likelihoods.Softmax()
-        kernel = kernels.RadialBasis(input_dim=2, lengthscale=[1., 1.], std_dev=[1., 1.], white=[0., 0.])
-        inducing_locations = np.array([[1.0, 2.0, 3.0, 4.0]])
-        cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_func=kernel,
-                                           inducing_inputs=inducing_locations,
+        likelihood = lik.Softmax()
+        kernel = cov.SquaredExponential(input_dim=2, output_dim=2, length_scale=1., std_dev=1., white=0.)
+        inducing_inputs = np.array([[1.0, 2.0, 3.0, 4.0]])
+        cls.inf = inf.VariationalInference(num_samples=10, lik_func=likelihood, cov_func=kernel, num_components=2)
+        cls.model = autogp.GaussianProcess(lik_func=likelihood,
+                                           cov_func=kernel,
+                                           inducing_inputs=inducing_inputs,
                                            num_components=2,
                                            diag_post=False,
-                                           num_samples=1)
+                                           inf_func=cls.inf)
         cls.session.run(tf.global_variables_initializer())
 
     def test_entropy(self):

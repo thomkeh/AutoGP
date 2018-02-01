@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 
 
-class Kernel(ABC):
+class Cov(ABC):
     @abstractmethod
-    def kernel(self, inputs1, inputs2=None):
+    def cov_func(self, inputs1, inputs2=None):
         pass
 
     @abstractmethod
-    def diag_kernel(self, inputs1, inputs2=None):
+    def diag_cov_func(self, inputs1):
         pass
 
     @abstractmethod

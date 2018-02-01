@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import tensorflow as tf
 
-from autogp import likelihoods
+from autogp import lik
 
 
 SIG_FIGS = 5
@@ -11,12 +11,12 @@ SIG_FIGS = 5
 
 class TestSoftmax(unittest.TestCase):
     def log_prob(self, outputs, latent):
-        softmax = likelihoods.Softmax()
+        softmax = lik.Softmax()
         return tf.Session().run(softmax.log_cond_prob(tf.constant(outputs, dtype=tf.float32),
                                                       tf.constant(latent, dtype=tf.float32)))
 
     def predict(self, latent_means, latent_vars):
-        softmax = likelihoods.Softmax()
+        softmax = lik.Softmax()
         return tf.Session().run(softmax.predict(tf.constant(latent_means, dtype=tf.float32),
                                                 tf.constant(latent_vars, dtype=tf.float32)))
 
