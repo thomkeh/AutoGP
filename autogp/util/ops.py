@@ -22,6 +22,9 @@ import numpy as np
 
 
 def tri_vec_shape(N):
+    """
+    Compute the length of a vector that contains all elements of a triangle with dimensions N.
+    """
     return [N * (N + 1) // 2]
 
 
@@ -40,20 +43,3 @@ def vec_to_tri(vectors):
         return tf.scatter_nd(indices=indices, shape=[N, N], updates=vector)
 
     return tf.map_fn(vec_to_tri_vector, vectors)
-
-
-# @ops.RegisterGradient("VecToTri")
-# def _vec_to_tri_grad(op, grad):
-#     return [tri_to_vec(grad)]
-
-
-# @ops.RegisterShape("VecToTri")
-# def _vec_to_tri_shape(op):
-#     in_shape = op.inputs[0].get_shape().with_rank(2)
-#     M = in_shape[1].value
-#     if M is None:
-#         k = None
-#     else:
-#         k = int((M * 8 + 1) ** 0.5 / 2.0 - 0.5)
-#     shape = tf.TensorShape([in_shape[0], k, k])
-#     return [shape]

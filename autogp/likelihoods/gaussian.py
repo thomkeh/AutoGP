@@ -7,7 +7,7 @@ from . import likelihood
 class Gaussian(likelihood.Likelihood):
     def __init__(self, std_dev=1.0):
         # Save the raw standard deviation. Note that this value can be negative.
-        self.raw_std_dev = tf.Variable(std_dev)
+        self.raw_std_dev = tf.get_variable("raw_std_dev", initializer=tf.constant(std_dev))
 
     def log_cond_prob(self, outputs, latent):
         var = self.raw_std_dev ** 2

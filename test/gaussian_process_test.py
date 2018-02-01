@@ -17,6 +17,7 @@ class TestGaussianProcess(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # We expect the child class to instantiate `cls.model` for us.
+        tf.reset_default_graph()
         cls.session = tf.Session()
 
     @classmethod
@@ -25,33 +26,33 @@ class TestGaussianProcess(unittest.TestCase):
 
     @classmethod
     def entropy(cls, weights, means, covars):
-        entropy = cls.model._build_entropy(weights=np.array(weights, dtype=np.float32),
-                                           means=np.array(means, dtype=np.float32),
-                                           covars=np.array(covars, dtype=np.float32))
+        entropy = cls.model._build_entropy(weights=tf.constant(weights, dtype=tf.float32),
+                                           means=tf.constant(means, dtype=tf.float32),
+                                           covars=tf.constant(covars, dtype=tf.float32))
         return cls.session.run(entropy)
 
     @classmethod
     def cross_ent(cls, weights, means, covars, kernel_chol):
-        cross_ent = cls.model._build_cross_ent(weights=np.array(weights, dtype=np.float32),
-                                               means=np.array(means, dtype=np.float32),
-                                               covars=np.array(covars, dtype=np.float32),
-                                               kernel_chol=np.array(kernel_chol, dtype=np.float32))
+        cross_ent = cls.model._build_cross_ent(weights=tf.constant(weights, dtype=tf.float32),
+                                               means=tf.constant(means, dtype=tf.float32),
+                                               covars=tf.constant(covars, dtype=tf.float32),
+                                               kernel_chol=tf.constant(kernel_chol, dtype=tf.float32))
         return cls.session.run(cross_ent)
 
     @classmethod
     def interim_vals(cls, kernel_chol, inducing_inputs, train_inputs):
         kern_prods, kern_sums = cls.model._build_interim_vals(
-            kernel_chol=np.array(kernel_chol, dtype=np.float32),
-            inducing_inputs=np.array(inducing_inputs, dtype=np.float32),
-            train_inputs=np.array(train_inputs, dtype=np.float32))
+            kernel_chol=tf.constant(kernel_chol, dtype=tf.float32),
+            inducing_inputs=tf.constant(inducing_inputs, dtype=tf.float32),
+            train_inputs=tf.constant(train_inputs, dtype=tf.float32))
         return cls.session.run([kern_prods, kern_sums])
 
     @classmethod
     def sample_info(cls, kern_prods, kern_sums, means, covars):
-        mean, var = cls.model._build_sample_info(kern_prods=np.array(kern_prods, dtype=np.float32),
-                                                 kern_sums=np.array(kern_sums, dtype=np.float32),
-                                                 means=np.array(means, dtype=np.float32),
-                                                 covars=np.array(covars, dtype=np.float32))
+        mean, var = cls.model._build_sample_info(kern_prods=tf.constant(kern_prods, dtype=tf.float32),
+                                                 kern_sums=tf.constant(kern_sums, dtype=tf.float32),
+                                                 means=tf.constant(means, dtype=tf.float32),
+                                                 covars=tf.constant(covars, dtype=tf.float32))
         return cls.session.run([mean, var])
 
 
@@ -60,11 +61,11 @@ class TestSimpleFull(TestGaussianProcess):
     def setUpClass(cls):
         super(TestSimpleFull, cls).setUpClass()
         likelihood = likelihoods.Gaussian(1.0)
-        kernel = [kernels.RadialBasis(input_dim=1, lengthscale=1.0, std_dev=1.0, white=0.0)]
+        kernel = kernels.RadialBasis(input_dim=1, lengthscale=[1.0], std_dev=[1.0], white=[0.0])
         # In most of our unit test, we will replace this value with something else.
         inducing_inputs = np.array([[1.0]])
         cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_funcs=kernel,
+                                           kernel_func=kernel,
                                            inducing_inputs=inducing_inputs,
                                            num_components=1,
                                            diag_post=False,
@@ -177,11 +178,11 @@ class TestSimpleDiag(TestGaussianProcess):
     def setUpClass(cls):
         super(TestSimpleDiag, cls).setUpClass()
         likelihood = likelihoods.Gaussian(1.0)
-        kernel = [kernels.RadialBasis(input_dim=1, lengthscale=1.0, std_dev=1.0, white=0.0)]
+        kernel = kernels.RadialBasis(input_dim=1, lengthscale=[1.0], std_dev=[1.0], white=[0.0])
         # In most of our unit test, we will replace this value with something else.
         inducing_inputs = np.array([[1.0]])
         cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_funcs=kernel,
+                                           kernel_func=kernel,
                                            inducing_inputs=inducing_inputs,
                                            num_components=1,
                                            diag_post=True,
@@ -218,7 +219,7 @@ class TestSimpleDiag(TestGaussianProcess):
                                              means=[[[1e-10]]],
                                              covars=[[[1e-10]]],
                                              kernel_chol=[[[1e-10]]])
-        self.assertAlmostEqual(cross_ent, -0.5 * (np.log(2 * np.pi) + np.log(1e-20) + 1.0 + 1e10),
+        self.assertAlmostEqual((-0.5 * (np.log(2 * np.pi) + np.log(1e-20) + 1.0 + 1e10) - cross_ent) / cross_ent, 0,
                                SIG_FIGS)
 
     def test_large_cross_ent(self):
@@ -252,11 +253,10 @@ class TestMultiFull(TestGaussianProcess):
     def setUpClass(cls):
         super(TestMultiFull, cls).setUpClass()
         likelihood = likelihoods.Softmax()
-        kernel = [kernels.RadialBasis(input_dim=2, lengthscale=1.0, std_dev=1.0, white=0.0)
-                  for i in range(2)]
+        kernel = kernels.RadialBasis(input_dim=2, lengthscale=[1., 1.], std_dev=[1., 1.], white=[0., 0.])
         inducing_locations = np.array([[1.0, 2.0, 3.0, 4.0]])
         cls.model = autogp.GaussianProcess(likelihood_func=likelihood,
-                                           kernel_funcs=kernel,
+                                           kernel_func=kernel,
                                            inducing_inputs=inducing_locations,
                                            num_components=2,
                                            diag_post=False,

@@ -13,3 +13,7 @@ class Kernel(ABC):
     @abstractmethod
     def get_params(self):
         pass
+
+    @abstractmethod
+    def num_latent_functions(self):
+        pass

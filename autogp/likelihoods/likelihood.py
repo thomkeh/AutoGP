@@ -15,4 +15,3 @@ class Likelihood:
     @abc.abstractmethod
     def predict(self, latent_means, latent_vars):
         raise NotImplementedError("Subclass should implement this.")
-
