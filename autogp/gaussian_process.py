@@ -220,7 +220,7 @@ class GaussianProcess:
                      train_inputs, train_outputs, num_train, test_inputs):
         # First transform all raw variables into their internal form.
         # Use softmax(raw_weights) to keep all weights normalized.
-        weights = tf.exp(raw_weights) / tf.reduce_sum(tf.exp(raw_weights))
+        weights = tf.nn.softmax(raw_weights)
 
         if self.diag_post:
             # Use exp(raw_covars) so as to guarantee the diagonal matrix remains positive definite.
@@ -269,14 +269,15 @@ class GaussianProcess:
             inducing_inputs: (num_latent, num_inducing, input_dim)
             kernel_chol: (num_latent, num_inducing, num_inducing)
             test_inputs: (batch_size, input_dim)
-            train_outputs: (batch_size, output_dim)
+            train_outputs: (batch_size, num_latent)
         Returns:
             LOO loss
         """
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, train_inputs)
         loss = 0
         latent_samples = self._build_samples(kern_prods, kern_sums, means, covars)
-        # output of log_cond_prob: (num_components, num_samples, batch_size, output_dim)
+        # output of log_cond_prob: (num_components, num_samples, batch_size, num_latent)
+        # shape of loss_by_component: (num_components, batch_size, num_latent)
         loss_by_component = tf.reduce_mean(1.0 / (tf.exp(self.likelihood.log_cond_prob(
             train_outputs, latent_samples)) + 1e-7), axis=1)
         loss = tf.reduce_sum(weights[:, tf.newaxis, tf.newaxis] * loss_by_component, axis=0)
@@ -376,7 +377,7 @@ class GaussianProcess:
             inducing_inputs: (num_latent, num_inducing, input_dim)
             kernel_chol: (num_latent, num_inducing, num_inducing)
             train_inputs: (batch_size, input_dim)
-            train_outputs: (batch_size, output_dim)
+            train_outputs: (batch_size, num_latent)
         Returns:
             Expected log likelihood as scalar
         """
