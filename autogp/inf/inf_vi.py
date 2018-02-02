@@ -21,7 +21,7 @@ class VariationalInference(inf.Inference):
         self.num_samples = num_samples
 
     def inference(self, raw_weights, raw_means, raw_covars, raw_inducing_inputs, train_inputs, train_outputs,
-                  num_train, test_inputs):
+                  num_train, test_inputs, _):
         # First transform all raw variables into their internal form.
         # Use softmax(raw_weights) to keep all weights normalized.
         weights = tf.nn.softmax(raw_weights)
