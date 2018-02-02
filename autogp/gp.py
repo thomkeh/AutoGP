@@ -1,8 +1,6 @@
 import numpy as np
 import tensorflow as tf
 
-from . import cov
-from . import lik
 from . import util
 from . import inf
 
@@ -71,8 +69,7 @@ class GaussianProcess:
                                                    initializer=tf.constant(inducing_inputs, dtype=tf.float32))
         self.raw_likelihood_params = lik_func.get_params()
         self.raw_kernel_params = cov_func.get_params()
-        if inducing_outputs is not None:
-            self.inducing_outputs = tf.constant(inducing_outputs, dtype=tf.float32)
+        raw_inducing_outputs = tf.constant(inducing_outputs, dtype=tf.float32) if inducing_outputs else 0
 
         # Define placeholder variables for training and predicting.
         self.num_train = tf.placeholder(tf.float32, shape=[], name="num_train")
@@ -84,28 +81,15 @@ class GaussianProcess:
                                           name="test_inputs")
 
         # Now build our computational graph.
-        is_exact_inference = True
-        if is_exact_inference:
-            # this exact inference code has the following assumptions
-            # the train inputs have been passed to this class as inducing inputs
-            # the train outputs have been passed to this class as inducing outputs
-            # batching has been switched off
-            self.nelbo, self.predictions = inf.exact.build_graph(self.raw_inducing_inputs,
-                                                                 self.inducing_outputs,
-                                                                 self.test_inputs,
-                                                                 num_inducing,
-                                                                 cov_func.num_latent_functions(),
-                                                                 cov_func,
-                                                                 lik_func)
-        else:
-            self.nelbo, self.loo_loss, self.predictions = self.inf.inference(self.raw_weights,
-                                                                             self.raw_means,
-                                                                             self.raw_covars,
-                                                                             self.raw_inducing_inputs,
-                                                                             self.train_inputs,
-                                                                             self.train_outputs,
-                                                                             self.num_train,
-                                                                             self.test_inputs)
+        self.nelbo, self.loo_loss, self.predictions = self.inf.inference(self.raw_weights,
+                                                                         self.raw_means,
+                                                                         self.raw_covars,
+                                                                         self.raw_inducing_inputs,
+                                                                         self.train_inputs,
+                                                                         self.train_outputs,
+                                                                         self.num_train,
+                                                                         self.test_inputs,
+                                                                         raw_inducing_outputs)
 
         # config = tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
         # Do all the tensorflow bookkeeping.
