@@ -23,9 +23,9 @@ class Exact(inf.Inference):
             negative log marginal likelihood and predictive mean and variance
         """
         num_inducing = X.shape[-2].value
-        _, noise = self.lik.predict(0, tf.zeros([num_inducing]))
+        sn = self.lik.get_params()[0]
         # Kxx (num_latent, num_train, num_train)
-        Kxx = self.cov.cov_func(X) + tf.matrix_diag(noise)
+        Kxx = self.cov.cov_func(X) + sn**2 * tf.eye(num_inducing)
         # L (same size as Kxx)
         L = tf.cholesky(Kxx)
         # alpha = Kxx \ y
