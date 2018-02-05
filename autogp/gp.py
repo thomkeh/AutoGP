@@ -69,7 +69,7 @@ class GaussianProcess:
                                                    initializer=tf.constant(inducing_inputs, dtype=tf.float32))
         self.raw_likelihood_params = lik_func.get_params()
         self.raw_kernel_params = cov_func.get_params()
-        raw_inducing_outputs = tf.constant(inducing_outputs, dtype=tf.float32) if inducing_outputs else 0
+        raw_inducing_outputs = 0 if inducing_outputs is None else tf.constant(inducing_outputs, dtype=tf.float32)
 
         # Define placeholder variables for training and predicting.
         self.num_train = tf.placeholder(tf.float32, shape=[], name="num_train")
