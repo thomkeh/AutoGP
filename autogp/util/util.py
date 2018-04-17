@@ -194,3 +194,20 @@ def get_flags():
     flags.DEFINE_boolean('optimize_inducing', True, 'Optimize inducing inputs')
     flags.DEFINE_float('latent_noise', 0.001, 'latent noise for Kernel matrices')
     return FLAGS
+
+
+def mul_sum(a, b):
+    """Compute inner product in the last dimension of `a` and `b`. Equivalent to `sum(a * b, axis=-1)`.
+
+    Args:
+        a: Tensor
+        b: Tensor with dimensions compatible with `a`.
+    Returns:
+        Tensor with last dimension reduced
+    """
+    # First, expand dimensions so that the last two dimensions can be interpreted as a matrix with
+    # dimensions (1, n) and (n, 1).
+    # Then do matrix multiplication so that last two dimensions are contracted to shape (1, 1)
+    prod = matmul_br(a[..., tf.newaxis, :], b[..., tf.newaxis])
+    # Finally, remove the last two dimensions which are both 1
+    return tf.squeeze(prod, axis=[-2, -1])

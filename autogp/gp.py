@@ -73,31 +73,32 @@ class GaussianProcess:
 
         # Define placeholder variables for training and predicting.
         self.num_train = tf.placeholder(tf.float32, shape=[], name="num_train")
-        self.train_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim],
-                                           name="train_inputs")
-        self.train_outputs = tf.placeholder(tf.float32, shape=[None, None],
-                                            name="train_outputs")
-        self.test_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim],
-                                          name="test_inputs")
+        self.train_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim], name="train_inputs")
+        self.train_outputs = tf.placeholder(tf.float32, shape=[None, None], name="train_outputs")
+        self.test_inputs = tf.placeholder(tf.float32, shape=[None, self.input_dim], name="test_inputs")
+
+        self.train_sensitive = tf.placeholder(tf.float32, shape=[None, 1], name="train_sensitive")
 
         # Now build our computational graph.
-        self.nelbo, self.loo_loss, self.predictions = self.inf.inference(self.raw_weights,
-                                                                         self.raw_means,
-                                                                         self.raw_covars,
-                                                                         self.raw_inducing_inputs,
-                                                                         self.train_inputs,
-                                                                         self.train_outputs,
-                                                                         self.num_train,
-                                                                         self.test_inputs,
-                                                                         raw_inducing_outputs)
+        self.nelbo, self.loo_loss, self.prediction, self.constraint = self.inf.inference(self.raw_weights,
+                                                                                         self.raw_means,
+                                                                                         self.raw_covars,
+                                                                                         self.raw_inducing_inputs,
+                                                                                         self.train_inputs,
+                                                                                         self.train_outputs,
+                                                                                         self.train_sensitive,
+                                                                                         self.num_train,
+                                                                                         self.test_inputs,
+                                                                                         raw_inducing_outputs)
 
+        print(self.nelbo.shape)
         # config = tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
         # Do all the tensorflow bookkeeping.
         self.session = tf.Session()
         self.optimizer = None
         self.train_step = None
 
-    def fit(self, data, optimizer, loo_steps=10, var_steps=10, epochs=200, batch_size=None, display_step=1,
+    def fit(self, data, loo_steps=10, var_steps=10, epochs=200, batch_size=None, display_step=1,
             hyper_with_elbo=True, optimize_inducing=True, test=None, loss=None, only_hyper=False):
         """
         Fit the Gaussian process model to the given data.
@@ -133,16 +134,37 @@ class GaussianProcess:
         if optimize_inducing:
             hyper_param = hyper_param + [self.raw_inducing_inputs]
 
-        if self.optimizer != optimizer:
-            self.optimizer = optimizer
+        if self.optimizer is None:
+
             if only_hyper:
-                self.train_step = optimizer.minimize(self.nelbo, var_list=hyper_param)
+                optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.nelbo,
+                                                                   var_list=hyper_param,
+                                                                   # equalities=equalities,
+                                                                   inequalities=self.constraint,
+                                                                   method='SLSQP')
+
+                self.train_step = optimizer
             else:
-                loo_train_step = optimizer.minimize(self.loo_loss, var_list=hyper_param)
+                loo_optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loo_loss,
+                                                                       var_list=hyper_param,
+                                                                       # equalities=equalities,
+                                                                       inequalities=self.constraint,
+                                                                       method='SLSQP')
+
                 if hyper_with_elbo:
-                    self.train_step = optimizer.minimize(self.nelbo, var_list=var_param + hyper_param)
+                    optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.nelbo,
+                                                                       var_list=var_param + hyper_param,
+                                                                       # equalities=equalities,
+                                                                       inequalities=self.constraint,
+                                                                       method='SLSQP')
+                    self.train_step = optimizer
                 else:
-                    self.train_step = optimizer.minimize(self.nelbo, var_list=var_param)
+                    optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.nelbo,
+                                                                       var_list=hyper_param,
+                                                                       # equalities=equalities,
+                                                                       inequalities=self.constraint,
+                                                                       method='SLSQP')
+                    self.train_step = optimizer
 
             self.session.run(tf.global_variables_initializer())
 
@@ -151,9 +173,11 @@ class GaussianProcess:
             var_iter = 0
             while var_iter < var_steps:
                 batch = data.next_batch(batch_size)
-                self.session.run(self.train_step, feed_dict={self.train_inputs: batch[0],
-                                                             self.train_outputs: batch[1],
-                                                             self.num_train: num_train})
+                self.train_step.minimize(self.session, feed_dict={self.train_inputs: batch[0],
+                                                                  self.train_outputs: batch[1],
+                                                                  self.train_sensitive: batch[2],
+                                                                  self.num_train: num_train})
+
                 if var_iter % display_step == 0:
                     self._print_state(data, test, loss, num_train, step, only_hyper)
                 var_iter += 1
@@ -162,9 +186,10 @@ class GaussianProcess:
             loo_iter = 0
             while loo_iter < loo_steps and not only_hyper:
                 batch = data.next_batch(batch_size)
-                self.session.run(loo_train_step, feed_dict={self.train_inputs: batch[0],
-                                                            self.train_outputs: batch[1],
-                                                            self.num_train: num_train})
+                loo_optimizer.minimize(self.session, feed_dict={self.train_inputs: batch[0],
+                                                                self.train_outputs: batch[1],
+                                                                self.train_sensitive: batch[2],
+                                                                self.num_train: num_train})
                 if loo_iter % display_step == 0:
                     self._print_state(data, test, loss, num_train, step, False)
                 loo_iter += 1

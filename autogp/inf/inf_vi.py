@@ -4,6 +4,7 @@ from autogp import cov
 from autogp import lik
 from autogp import util
 from . import inf
+EPISILON = 0.01
 
 
 class VariationalInference(inf.Inference):
@@ -20,7 +21,7 @@ class VariationalInference(inf.Inference):
         self.diag_post = diag_post
         self.num_samples = num_samples
 
-    def inference(self, raw_weights, raw_means, raw_covars, raw_inducing_inputs, train_inputs, train_outputs,
+    def inference(self, raw_weights, raw_means, raw_covars, raw_inducing_inputs, train_inputs, train_outputs, train_sensitive,
                   num_train, test_inputs, _):
         # First transform all raw variables into their internal form.
         # Use softmax(raw_weights) to keep all weights normalized.
@@ -49,9 +50,25 @@ class VariationalInference(inf.Inference):
         # Now build the objective function.
         entropy = self._build_entropy(weights, means, covars)
         cross_ent = self._build_cross_ent(weights, means, covars, kernel_chol)
-        ell = self._build_ell(weights, means, covars, inducing_inputs, kernel_chol, train_inputs, train_outputs)
+        # ell = self._build_ell(weights, means, covars, inducing_inputs, kernel_chol, train_inputs, train_outputs)
+        # batch_size = tf.to_float(tf.shape(train_inputs)[0])
+        # nelbo = -((batch_size / num_train) * (entropy + cross_ent) + ell)
+
+        sensitive_ell = [0 for _ in range(2)]
+        for i in range(2):
+            # sensitive_inputs[i] = tf.gather_nd(inputs, tf.where(tf.logical_and(tf.equal(sensi_attr, 0), tf.equal(train_outputs, 1))))
+            sensitive_train_inputs = tf.gather_nd(train_inputs, tf.where(tf.equal(tf.squeeze(train_sensitive, 1), float(i))))
+            sensitive_train_outputs = tf.gather_nd(train_outputs, tf.where(tf.equal(tf.squeeze(train_sensitive, 1), float(i))))
+            sensitive_ell[i] = self._build_ell(weights, means, covars, inducing_inputs, kernel_chol,
+                                               sensitive_train_inputs, sensitive_train_outputs)
+        constraint = 0
+        for i in range(2):
+            for j in range(i+1, 2):
+                # ell_diff_sum += self.smooth_abs(sensitive_ell[i] - sensitive_ell[j], 0.1)
+                constraint += tf.abs(sensitive_ell[i] - sensitive_ell[j]) - EPISILON
         batch_size = tf.to_float(tf.shape(train_inputs)[0])
-        nelbo = -((batch_size / num_train) * (entropy + cross_ent) + ell)
+        ell = self._build_ell(weights, means, covars, inducing_inputs, kernel_chol, train_inputs, train_outputs)
+        nelbo = -((batch_size / num_train) * (entropy + cross_ent)) + ell  #tf.reduce_sum(sensitive_ell))
 
         # Build the leave one out loss function.
         loo_loss = self._build_loo_loss(weights, means, covars, inducing_inputs,
@@ -60,7 +77,7 @@ class VariationalInference(inf.Inference):
         # Finally, build the prediction function.
         predictions = self._build_predict(weights, means, covars, inducing_inputs, kernel_chol, test_inputs)
 
-        return nelbo, loo_loss, predictions
+        return nelbo, loo_loss, predictions, [tf.squeeze(constraint)]
 
     def _build_loo_loss(self, weights, means, covars, inducing_inputs, kernel_chol, train_inputs, train_outputs):
         """Construct leave out one loss
@@ -139,7 +156,7 @@ class VariationalInference(inf.Inference):
         # broadcast `weights` into dimension 1, then do `logsumexp` in that dimension
         weighted_logsumexp_probs = tf.reduce_logsumexp(tf.log(weights) + log_normal_probs, 1)
         # multiply with weights again and then sum over it all
-        return -tf.tensordot(weights, weighted_logsumexp_probs, 1)
+        return -util.mul_sum(weights, weighted_logsumexp_probs)
 
     def _build_cross_ent(self, weights, means, covars, kernel_chol):
         """Construct the cross-entropy.
@@ -166,7 +183,7 @@ class VariationalInference(inf.Inference):
         sum_val = tf.reduce_sum(util.CholNormal(means, kernel_chol).log_prob(0.0) - 0.5 * trace, -1)
 
         # dot product of weights and sum_val
-        cross_ent = tf.tensordot(weights, sum_val, 1)
+        cross_ent = util.mul_sum(weights, sum_val)
 
         return cross_ent
 
@@ -187,10 +204,10 @@ class VariationalInference(inf.Inference):
         kern_prods, kern_sums = self._build_interim_vals(kernel_chol, inducing_inputs, train_inputs)
         # shape of `latent_samples`: (num_components, num_samples, batch_size, num_latent)
         latent_samples = self._build_samples(kern_prods, kern_sums, means, covars)
-        ell_by_compontent = tf.reduce_sum(self.lik.log_cond_prob(train_outputs, latent_samples), axis=[1, 2])
+        ell_by_component = tf.reduce_sum(self.lik.log_cond_prob(train_outputs, latent_samples), axis=[1, 2])
 
         # dot product
-        ell = tf.tensordot(weights, ell_by_compontent, 1)
+        ell = util.mul_sum(weights, ell_by_component)
         return ell / self.num_samples
 
     def _build_interim_vals(self, kernel_chol, inducing_inputs, train_inputs):

@@ -39,7 +39,7 @@ class SquaredExponential(cov.Cov):
         # reshape lengthscale so that the correct dimenions get divided in the line after
         lengthscale_br = tf.reshape(self.length_scale, [self.num_latent, 1, self.input_dim if self.input_scaling else 1])
         points1 = points1 / lengthscale_br
-        magnitude_square1 = tf.reduce_sum(points1**2, -1, keep_dims=True)
+        magnitude_square1 = tf.reduce_sum(points1**2, -1, keepdims=True)
         if points2 is None:
             white_noise = self.white * tf.eye(tf.shape(points1)[-2])
             points2 = points1
@@ -49,7 +49,7 @@ class SquaredExponential(cov.Cov):
             white_noise = 0.0
             points2 = points2 / lengthscale_br
             product = util.matmul_br(points1, points2, transpose_b=True)
-            magnitude_square2_t = tf.matrix_transpose(tf.reduce_sum(points2**2, -1, keep_dims=True))
+            magnitude_square2_t = tf.matrix_transpose(tf.reduce_sum(points2**2, -1, keepdims=True))
 
         distances = magnitude_square1 - 2 * product + magnitude_square2_t
         # TODO(thomas): this seems wrong. why would we not want the covariance to go to zero no matter how far apart?

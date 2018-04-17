@@ -10,3 +10,4 @@ from .util import mat_square
 from .util import matmul_br
 from .util import cholesky_solve_br
 from .util import broadcast
+from .util import mul_sum

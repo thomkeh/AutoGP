@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from . import likelihood
+from .. import util
 
 
 class Logistic(likelihood.Likelihood):
@@ -10,7 +11,7 @@ class Logistic(likelihood.Likelihood):
     def log_cond_prob(self, outputs, latent):
         # return latent * (outputs - 1) - tf.log(1 + tf.exp(-latent))
         outputs_expanded = util.broadcast(outputs, latent)
-        return -tf.nn.sigmoid_cross_entropy_with_logits(labels=outputs_expanded, logits=latent)
+        return -tf.squeeze(tf.nn.sigmoid_cross_entropy_with_logits(labels=outputs_expanded, logits=latent), axis=-1)
 
     def get_params(self):
         return []
